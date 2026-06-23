@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -70,4 +69,326 @@
         <th>삭제</th>
       </tr>
     </thead>
-    <tbody id="table
+    <tbody id="tableBody"></tbody>
+
+    <tfoot>
+      <tr>
+        <td colspan="7"><b>총 인원</b></td>
+        <td id="totalPeople"><b>0</b></td>
+        <td colspan="2"></td>
+      </tr>
+      <tr>
+        <td colspan="7"><b>PLOT-C 인원</b></td>
+        <td id="plotC"><b>0</b></td>
+        <td colspan="2"></td>
+      </tr>
+      <tr>
+        <td colspan="7"><b>PLOT-D 인원</b></td>
+        <td id="plotD"><b>0</b></td>
+        <td colspan="2"></td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import {
+      getFirestore,
+      collection,
+      query,
+      orderBy,
+      onSnapshot,
+      doc,
+      deleteDoc
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyA4ifZEP4N_Ch9e0r_4hwvXNZgXFwbFM1c",
+      authDomain: "ppaenjji-ac949.firebaseapp.com",
+      projectId: "ppaenjji-ac949",
+      storageBucket: "ppaenjji-ac949.firebasestorage.app",
+      messagingSenderId: "1092159188617",
+      appId: "1:1092159188617:web:5cf3e69df069d4a8c32058"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const tableBody = document.getElementById("tableBody");
+    const summaryBody = document.getElementById("summaryBody");
+
+    const totalPeopleEl = document.getElementById("totalPeople");
+    const plotCEl = document.getElementById("plotC");
+    const plotDEl = document.getElementById("plotD");
+
+    const dateFilter = document.getElementById("dateFilter");
+    const plotFilter = document.getElementById("plotFilter");
+    const foremanFilter = document.getElementById("foremanFilter");
+    const resetFilterBtn = document.getElementById("resetFilterBtn");
+
+    const q = query(collection(db, "workData"), orderBy("createdAt", "desc"));
+
+    let allRows = [];
+
+    const WORK_TYPES = [
+      "ELV1(FA,ACS)",
+      "ELV(Honeywell)",
+      "Defect",
+      "Snag",
+      "LCS",
+      "TEMP"
+    ];
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    // createdAt 기준 최신순 정렬
+    function sortRows(rows) {
+      return rows.slice().sort((a, b) => {
+        const aSec = a.createdAt?.seconds || 0;
+        const bSec = b.createdAt?.seconds || 0;
+        const aNano = a.createdAt?.nanoseconds || 0;
+        const bNano = b.createdAt?.nanoseconds || 0;
+
+        if (bSec !== aSec) return bSec - aSec;
+        return bNano - aNano;
+      });
+    }
+
+    // 날짜 필터 옵션 채우기
+    function fillDateOptions(rows) {
+      const currentValue = dateFilter.value;
+      const uniqueDates = [...new Set(rows.map(row => row.dateText).filter(Boolean))];
+
+      dateFilter.innerHTML = `<option value="ALL">전체 날짜</option>`;
+
+      uniqueDates.forEach(date => {
+        const option = document.createElement("option");
+        option.value = date;
+        option.textContent = date;
+        dateFilter.appendChild(option);
+      });
+
+      if ([...dateFilter.options].some(opt => opt.value === currentValue)) {
+        dateFilter.value = currentValue;
+      }
+    }
+
+    // 포맨 필터 옵션 채우기
+    function fillForemanOptions(rows) {
+      const currentValue = foremanFilter.value;
+      const uniqueForemen = [
+        ...new Set(
+          rows
+            .map(row => (row.foremanName || "").trim())
+            .filter(Boolean)
+        )
+      ].sort((a, b) => a.localeCompare(b));
+
+      foremanFilter.innerHTML = `<option value="ALL">전체 포맨</option>`;
+
+      uniqueForemen.forEach(name => {
+        const option = document.createElement("option");
+        option.value = name;
+        option.textContent = name;
+        foremanFilter.appendChild(option);
+      });
+
+      if ([...foremanFilter.options].some(opt => opt.value === currentValue)) {
+        foremanFilter.value = currentValue;
+      }
+    }
+
+    // 필터 적용
+    function getFilteredRows() {
+      const selectedDate = dateFilter.value;
+      const selectedPlot = plotFilter.value;
+      const selectedForeman = foremanFilter.value;
+
+      return sortRows(allRows).filter(row => {
+        const matchDate = selectedDate === "ALL" || row.dateText === selectedDate;
+        const matchPlot = selectedPlot === "ALL" || row.plot === selectedPlot;
+        const matchForeman =
+          selectedForeman === "ALL" || (row.foremanName || "") === selectedForeman;
+
+        return matchDate && matchPlot && matchForeman;
+      });
+    }
+
+    // 날짜별 집계표
+    function renderSummary(rows) {
+      summaryBody.innerHTML = "";
+
+      const summaryMap = {};
+
+      rows.forEach(row => {
+        const date = row.dateText || "날짜없음";
+        const people = Number(row.people || 0);
+        const workType = row.workType || "";
+
+        if (!summaryMap[date]) {
+          summaryMap[date] = {
+            total: 0,
+            plotC: 0,
+            plotD: 0,
+            workTypePeople: {
+              "ELV1(FA,ACS)": 0,
+              "ELV(Honeywell)": 0,
+              "Defect": 0,
+              "Snag": 0,
+              "LCS": 0,
+              "TEMP": 0
+            }
+          };
+        }
+
+        summaryMap[date].total += people;
+
+        if (row.plot === "PLOT-C") summaryMap[date].plotC += people;
+        if (row.plot === "PLOT-D") summaryMap[date].plotD += people;
+
+        if (summaryMap[date].workTypePeople.hasOwnProperty(workType)) {
+          summaryMap[date].workTypePeople[workType] += people;
+        }
+      });
+
+      const dates = Object.keys(summaryMap);
+
+      if (dates.length === 0) {
+        summaryBody.innerHTML = `
+          <tr>
+            <td colspan="10">데이터가 없습니다.</td>
+          </tr>
+        `;
+        return;
+      }
+
+      dates.forEach(date => {
+        const s = summaryMap[date];
+
+        const row = `
+          <tr>
+            <td>${escapeHtml(date)}</td>
+            <td><b>${s.total}</b></td>
+            <td>${s.plotC}</td>
+            <td>${s.plotD}</td>
+            <td>${s.workTypePeople["ELV1(FA,ACS)"]}</td>
+            <td>${s.workTypePeople["ELV(Honeywell)"]}</td>
+            <td>${s.workTypePeople["Defect"]}</td>
+            <td>${s.workTypePeople["Snag"]}</td>
+            <td>${s.workTypePeople["LCS"]}</td>
+            <td>${s.workTypePeople["TEMP"]}</td>
+          </tr>
+        `;
+
+        summaryBody.innerHTML += row;
+      });
+    }
+
+    // 상세 목록
+    function renderDetail(rows) {
+      tableBody.innerHTML = "";
+
+      let totalPeople = 0;
+      let plotC = 0;
+      let plotD = 0;
+
+      if (rows.length === 0) {
+        tableBody.innerHTML = `
+          <tr>
+            <td colspan="10">조건에 맞는 데이터가 없습니다.</td>
+          </tr>
+        `;
+
+        totalPeopleEl.textContent = 0;
+        plotCEl.textContent = 0;
+        plotDEl.textContent = 0;
+        return;
+      }
+
+      rows.forEach(d => {
+        const people = Number(d.people || 0);
+
+        totalPeople += people;
+        if (d.plot === "PLOT-C") plotC += people;
+        if (d.plot === "PLOT-D") plotD += people;
+
+        const row = `
+          <tr>
+            <td>${escapeHtml(d.dateText || "")}</td>
+            <td>${escapeHtml(d.timeText || "")}</td>
+            <td>${escapeHtml(d.foremanName || "")}</td>
+            <td>${escapeHtml(d.plot || "")}</td>
+            <td>${escapeHtml(d.area || "")}</td>
+            <td>${escapeHtml(d.workType || "")}</td>
+            <td>${escapeHtml(d.location || "")}</td>
+            <td>${people}</td>
+            <td>${escapeHtml(d.description || "")}</td>
+            <td>
+              <button onclick="deleteRow('${d.id}')">삭제</button>
+            </td>
+          </tr>
+        `;
+
+        tableBody.innerHTML += row;
+      });
+
+      totalPeopleEl.textContent = totalPeople;
+      plotCEl.textContent = plotC;
+      plotDEl.textContent = plotD;
+    }
+
+    function renderAll() {
+      const filteredRows = getFilteredRows();
+      renderSummary(filteredRows);
+      renderDetail(filteredRows);
+    }
+
+    // 삭제 기능
+    window.deleteRow = async function(docId) {
+      const ok = confirm("이 항목을 삭제하시겠습니까?\n중복 입력이면 확인 후 삭제하세요.");
+      if (!ok) return;
+
+      try {
+        await deleteDoc(doc(db, "workData", docId));
+        alert("삭제 완료");
+      } catch (error) {
+        console.error(error);
+        alert("삭제 실패: " + error.message);
+      }
+    };
+
+    // 실시간 데이터 수신
+    onSnapshot(q, (snapshot) => {
+      allRows = snapshot.docs.map(docSnap => ({
+        id: docSnap.id,
+        ...docSnap.data()
+      }));
+
+      const sortedRows = sortRows(allRows);
+      fillDateOptions(sortedRows);
+      fillForemanOptions(sortedRows);
+      renderAll();
+    });
+
+    // 필터 이벤트
+    dateFilter.addEventListener("change", renderAll);
+    plotFilter.addEventListener("change", renderAll);
+    foremanFilter.addEventListener("change", renderAll);
+
+    resetFilterBtn.addEventListener("click", () => {
+      dateFilter.value = "ALL";
+      plotFilter.value = "ALL";
+      foremanFilter.value = "ALL";
+      renderAll();
+    });
+  </script>
+</body>
+</html>
+``
