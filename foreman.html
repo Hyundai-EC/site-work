@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en"> <!-- ✅ 영어로 변경 -->
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Foreman Work Input</title>
+</head>
+<body>
+  <h2>Foreman Work Input</h2>
+
+  <!-- ✅ 추가: Foreman Name -->
+  <div>
+    <label>Foreman Name</label>
+    <input type="text" id="foremanName">
+  </div>
+  <br>
+
+  <div>
+    <label>Plot</label>
+    <select id="plot">
+      <option value="PLOT-C">PLOT-C</option>
+      <option value="PLOT-D">PLOT-D</option>
+    </select>
+  </div>
+  <br>
+
+  <div>
+    <label>Work Area</label>
+    <select id="area">
+      <option value="Tower">Tower</option>
+      <option value="Podium">Podium</option>
+      <option value="LG">LG</option>
+      <option value="Basement">Basement</option>
+    </select>
+  </div>
+  <br>
+
+  <div>
+    <label>Work Type</label>
+    <select id="workType">
+      <option value="ELV1(FA,ACS)">ELV1(FA,ACS)</option>
+      <option value="ELV(Honeywell)">ELV(Honeywell)</option>
+      <option value="Defect">Defect</option>
+      <option value="Snag">Snag</option>
+      <option value="LCS">LCS</option>
+      <option value="TEMP">TEMP</option>
+    </select>
+  </div>
+  <br>
+
+  <div>
+    <label>Location</label>
+    <input type="text" id="location">
+  </div>
+  <br>
+
+  <div>
+    <label>Number of Workers</label>
+    <input type="number" id="people">
+  </div>
+  <br>
+
+  <div>
+    <label>Work Description</label><br>
+    <textarea id="description" rows="4" cols="40"></textarea>
+  </div>
+  <br>
+
+  <button onclick="sendData()">Submit</button>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyA4ifZEP4N_Ch9e0r_4hwvXNZgXFwbFM1c",
+      authDomain: "ppaenjji-ac949.firebaseapp.com",
+      projectId: "ppaenjji-ac949",
+      storageBucket: "ppaenjji-ac949.firebasestorage.app",
+      messagingSenderId: "1092159188617",
+      appId: "1:1092159188617:web:5cf3e69df069d4a8c32058"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    window.sendData = async function () {
+      try {
+        await addDoc(collection(db, "workData"), {
+
+          // ✅ 추가된 부분
+          foremanName: document.getElementById("foremanName").value,
+
+          plot: document.getElementById("plot").value,
+          area: document.getElementById("area").value,
+          workType: document.getElementById("workType").value,
+          location: document.getElementById("location").value,
+          people: Number(document.getElementById("people").value || 0),
+          description: document.getElementById("description").value,
+          createdAt: serverTimestamp(),
+          dateText: new Date().toLocaleDateString("en-GB"),
+          timeText: new Date().toLocaleTimeString("en-GB")
+
+        });
+
+        alert("Submitted successfully");
+      } catch (error) {
+        console.error(error);
+        alert("Submission failed: " + error.message);
+      }
+    };
+  </script>
+</body>
+</html>
