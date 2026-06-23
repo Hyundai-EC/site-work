@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en"> <!-- ✅ 영어로 변경 -->
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -8,7 +8,6 @@
 <body>
   <h2>Foreman Work Input</h2>
 
-  <!-- ✅ 추가: Foreman Name -->
   <div>
     <label>Foreman Name</label>
     <input type="text" id="foremanName">
@@ -42,8 +41,12 @@
       <option value="ELV(Honeywell)">ELV(Honeywell)</option>
       <option value="Defect">Defect</option>
       <option value="Snag">Snag</option>
+      <option value="LV">LV</option>
+      <option value="scaffolder">scaffolder</option>
+      <option value="ABD">ABD</option>
       <option value="LCS">LCS</option>
       <option value="TEMP">TEMP</option>
+      <option value="Energize">Energize</option>
     </select>
   </div>
   <br>
@@ -66,7 +69,8 @@
   </div>
   <br>
 
-  <button onclick="sendData()">Submit</button>
+  <!-- ✅ id 추가 -->
+  <button id="submitBtn" onclick="sendData()">Submit</button>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -85,12 +89,17 @@
     const db = getFirestore(app);
 
     window.sendData = async function () {
+
+      const btn = document.getElementById("submitBtn");
+
+      // ✅ 버튼 잠금
+      btn.disabled = true;
+      btn.textContent = "Submitting...";
+
       try {
         await addDoc(collection(db, "workData"), {
 
-          // ✅ 추가된 부분
           foremanName: document.getElementById("foremanName").value,
-
           plot: document.getElementById("plot").value,
           area: document.getElementById("area").value,
           workType: document.getElementById("workType").value,
@@ -104,9 +113,14 @@
         });
 
         alert("Submitted successfully");
+
       } catch (error) {
         console.error(error);
         alert("Submission failed: " + error.message);
+
+        // ❗ 실패 시 다시 활성화
+        btn.disabled = false;
+        btn.textContent = "Submit";
       }
     };
   </script>
