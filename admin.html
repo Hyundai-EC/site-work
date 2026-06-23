@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -8,7 +9,7 @@
 <body>
   <h2>관리자 현황판</h2>
 
-  <!-- ✅ 추가: 필터 영역 -->
+  <!-- ✅ 필터 영역 -->
   <div style="margin-bottom:20px; padding:10px; border:1px solid #ccc;">
     <h3>필터</h3>
 
@@ -24,13 +25,15 @@
       <option value="PLOT-D">PLOT-D</option>
     </select>
 
-    <label style="margin-left:20px;">포맨 검색: </label>
-    <input type="text" id="foremanFilter" placeholder="포맨 이름 입력" />
+    <label style="margin-left:20px;">포맨 선택: </label>
+    <select id="foremanFilter">
+      <option value="ALL">전체 포맨</option>
+    </select>
 
     <button id="resetFilterBtn" style="margin-left:20px;">필터 초기화</button>
   </div>
 
-  <!-- ✅ 추가: 날짜별 집계표 -->
+  <!-- ✅ 날짜별 집계표 -->
   <h3>날짜별 인원 집계 (보고용)</h3>
   <table border="1" cellpadding="8" style="margin-bottom:30px;">
     <thead>
@@ -39,12 +42,18 @@
         <th>총 인원</th>
         <th>PLOT-C</th>
         <th>PLOT-D</th>
+        <th>ELV1(FA,ACS)</th>
+        <th>ELV(Honeywell)</th>
+        <th>Defect</th>
+        <th>Snag</th>
+        <th>LCS</th>
+        <th>TEMP</th>
       </tr>
     </thead>
     <tbody id="summaryBody"></tbody>
   </table>
 
-  <!-- ✅ 기존 상세 테이블 + 필터 적용 -->
+  <!-- ✅ 상세 작업 목록 -->
   <h3>상세 작업 목록 (확인용)</h3>
   <table border="1" cellpadding="8">
     <thead>
@@ -58,234 +67,7 @@
         <th>작업 위치</th>
         <th>인원수</th>
         <th>작업내용</th>
+        <th>삭제</th>
       </tr>
     </thead>
-    <tbody id="tableBody"></tbody>
-
-    <tfoot>
-      <tr>
-        <td colspan="7"><b>총 인원</b></td>
-        <td id="totalPeople"><b>0</b></td>
-        <td></td>
-      </tr>
-      <tr>
-        <td colspan="7"><b>PLOT-C 인원</b></td>
-        <td id="plotC"><b>0</b></td>
-        <td></td>
-      </tr>
-      <tr>
-        <td colspan="7"><b>PLOT-D 인원</b></td>
-        <td id="plotD"><b>0</b></td>
-        <td></td>
-      </tr>
-    </tfoot>
-  </table>
-
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getFirestore, collection, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyA4ifZEP4N_Ch9e0r_4hwvXNZgXFwbFM1c",
-      authDomain: "ppaenjji-ac949.firebaseapp.com",
-      projectId: "ppaenjji-ac949",
-      storageBucket: "ppaenjji-ac949.firebasestorage.app",
-      messagingSenderId: "1092159188617",
-      appId: "1:1092159188617:web:5cf3e69df069d4a8c32058"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-
-    const tableBody = document.getElementById("tableBody");
-    const summaryBody = document.getElementById("summaryBody");
-
-    const totalPeopleEl = document.getElementById("totalPeople");
-    const plotCEl = document.getElementById("plotC");
-    const plotDEl = document.getElementById("plotD");
-
-    const dateFilter = document.getElementById("dateFilter");
-    const plotFilter = document.getElementById("plotFilter");
-    const foremanFilter = document.getElementById("foremanFilter");
-    const resetFilterBtn = document.getElementById("resetFilterBtn");
-
-    const q = query(collection(db, "workData"), orderBy("createdAt", "desc"));
-
-    let allRows = [];
-
-    // createdAt 기준 정렬 함수
-    function sortRows(rows) {
-      return rows.slice().sort((a, b) => {
-        const aSec = a.createdAt?.seconds || 0;
-        const bSec = b.createdAt?.seconds || 0;
-        const aNano = a.createdAt?.nanoseconds || 0;
-        const bNano = b.createdAt?.nanoseconds || 0;
-
-        if (bSec !== aSec) return bSec - aSec;
-        return bNano - aNano;
-      });
-    }
-
-    // 날짜 필터 옵션 채우기
-    function fillDateOptions(rows) {
-      const currentValue = dateFilter.value;
-      const uniqueDates = [...new Set(rows.map(row => row.dateText).filter(Boolean))];
-
-      dateFilter.innerHTML = `<option value="ALL">전체 날짜</option>`;
-
-      uniqueDates.forEach(date => {
-        const option = document.createElement("option");
-        option.value = date;
-        option.textContent = date;
-        dateFilter.appendChild(option);
-      });
-
-      // 기존 선택 복원
-      if ([...dateFilter.options].some(opt => opt.value === currentValue)) {
-        dateFilter.value = currentValue;
-      }
-    }
-
-    // 필터 적용
-    function getFilteredRows() {
-      const selectedDate = dateFilter.value;
-      const selectedPlot = plotFilter.value;
-      const foremanKeyword = foremanFilter.value.trim().toLowerCase();
-
-      return sortRows(allRows).filter(row => {
-        const matchDate = selectedDate === "ALL" || row.dateText === selectedDate;
-        const matchPlot = selectedPlot === "ALL" || row.plot === selectedPlot;
-        const matchForeman =
-          !foremanKeyword ||
-          String(row.foremanName || "").toLowerCase().includes(foremanKeyword);
-
-        return matchDate && matchPlot && matchForeman;
-      });
-    }
-
-    // 날짜별 요약표 그리기
-    function renderSummary(rows) {
-      summaryBody.innerHTML = "";
-
-      const summaryMap = {};
-
-      rows.forEach(row => {
-        const date = row.dateText || "날짜없음";
-        const people = Number(row.people || 0);
-
-        if (!summaryMap[date]) {
-          summaryMap[date] = {
-            total: 0,
-            plotC: 0,
-            plotD: 0
-          };
-        }
-
-        summaryMap[date].total += people;
-        if (row.plot === "PLOT-C") summaryMap[date].plotC += people;
-        if (row.plot === "PLOT-D") summaryMap[date].plotD += people;
-      });
-
-      const dates = Object.keys(summaryMap);
-
-      if (dates.length === 0) {
-        summaryBody.innerHTML = `
-          <tr>
-            <td colspan="4">데이터가 없습니다.</td>
-          </tr>
-        `;
-        return;
-      }
-
-      dates.forEach(date => {
-        const s = summaryMap[date];
-        const row = `
-          <tr>
-            <td>${date}</td>
-            <td><b>${s.total}</b></td>
-            <td>${s.plotC}</td>
-            <td>${s.plotD}</td>
-          </tr>
-        `;
-        summaryBody.innerHTML += row;
-      });
-    }
-
-    // 상세 테이블 그리기
-    function renderDetail(rows) {
-      tableBody.innerHTML = "";
-
-      let totalPeople = 0;
-      let plotC = 0;
-      let plotD = 0;
-
-      if (rows.length === 0) {
-        tableBody.innerHTML = `
-          <tr>
-            <td colspan="9">조건에 맞는 데이터가 없습니다.</td>
-          </tr>
-        `;
-
-        totalPeopleEl.textContent = 0;
-        plotCEl.textContent = 0;
-        plotDEl.textContent = 0;
-        return;
-      }
-
-      rows.forEach((d) => {
-        const people = Number(d.people || 0);
-
-        totalPeople += people;
-        if (d.plot === "PLOT-C") plotC += people;
-        if (d.plot === "PLOT-D") plotD += people;
-
-        const row = `
-          <tr>
-            <td>${d.dateText || ""}</td>
-            <td>${d.timeText || ""}</td>
-            <td>${d.foremanName || ""}</td>
-            <td>${d.plot || ""}</td>
-            <td>${d.area || ""}</td>
-            <td>${d.workType || ""}</td>
-            <td>${d.location || ""}</td>
-            <td>${people}</td>
-            <td>${d.description || ""}</td>
-          </tr>
-        `;
-
-        tableBody.innerHTML += row;
-      });
-
-      totalPeopleEl.textContent = totalPeople;
-      plotCEl.textContent = plotC;
-      plotDEl.textContent = plotD;
-    }
-
-    // 전체 렌더링
-    function renderAll() {
-      const filteredRows = getFilteredRows();
-      renderSummary(filteredRows);
-      renderDetail(filteredRows);
-    }
-
-    // 실시간 데이터 수신
-    onSnapshot(q, (snapshot) => {
-      allRows = snapshot.docs.map(doc => doc.data());
-      fillDateOptions(sortRows(allRows));
-      renderAll();
-    });
-
-    // 필터 이벤트
-    dateFilter.addEventListener("change", renderAll);
-    plotFilter.addEventListener("change", renderAll);
-    foremanFilter.addEventListener("input", renderAll);
-
-    resetFilterBtn.addEventListener("click", () => {
-      dateFilter.value = "ALL";
-      plotFilter.value = "ALL";
-      foremanFilter.value = "";
-      renderAll();
-    });
-  </script>
-</body>
-</html>
+    <tbody id="table
