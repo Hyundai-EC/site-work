@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>관리자 현황판</title>
+</head>
+<body>
+  <h2>관리자 현황판</h2>
+
+  <table border="1" cellpadding="8">
+    <thead>
+      <tr>
+        <th>날짜</th>
+        <th>시간</th>
+        <th>포맨</th> <!-- ✅ 추가 -->
+        <th>플롯</th>
+        <th>작업영역</th>
+        <th>작업유형</th>
+        <th>작업 위치</th>
+        <th>인원수</th>
+        <th>작업내용</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+
+    <!-- ✅ 추가: 총합 표시 -->
+    <tfoot>
+      <tr>
+        <td colspan="7"><b>총 인원</b></td>
+        <td id="totalPeople"><b>0</b></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td colspan="7"><b>PLOT-C 인원</b></td>
+        <td id="plotC"><b>0</b></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td colspan="7"><b>PLOT-D 인원</b></td>
+        <td id="plotD"><b>0</b></td>
+        <td></td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getFirestore, collection, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyA4ifZEP4N_Ch9e0r_4hwvXNZgXFwbFM1c",
+      authDomain: "ppaenjji-ac949.firebaseapp.com",
+      projectId: "ppaenjji-ac949",
+      storageBucket: "ppaenjji-ac949.firebasestorage.app",
+      messagingSenderId: "1092159188617",
+      appId: "1:1092159188617:web:5cf3e69df069d4a8c32058"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const tableBody = document.getElementById("tableBody");
+
+    const totalPeopleEl = document.getElementById("totalPeople");
+    const plotCEl = document.getElementById("plotC");
+    const plotDEl = document.getElementById("plotD");
+
+    const q = query(collection(db, "workData"), orderBy("createdAt", "desc"));
+
+    onSnapshot(q, (snapshot) => {
+      tableBody.innerHTML = "";
+
+      let totalPeople = 0;
+      let plotC = 0;
+      let plotD = 0;
+
+      snapshot.forEach((doc) => {
+        const d = doc.data();
+
+        const people = Number(d.people || 0);
+
+        totalPeople += people;
+
+        if (d.plot === "PLOT-C") plotC += people;
+        if (d.plot === "PLOT-D") plotD += people;
+
+        const row = `
+          <tr>
+            <td>${d.dateText || ""}</td>
+            <td>${d.timeText || ""}</td>
+            <td>${d.foremanName || ""}</td> <!-- ✅ 추가 -->
+            <td>${d.plot || ""}</td>
+            <td>${d.area || ""}</td>
+            <td>${d.workType || ""}</td>
+            <td>${d.location || ""}</td>
+            <td>${people}</td>
+            <td>${d.description || ""}</td>
+          </tr>
+        `;
+
+        tableBody.innerHTML += row;
+      });
+
+      // ✅ 합계 표시
+      totalPeopleEl.textContent = totalPeople;
+      plotCEl.textContent = plotC;
+      plotDEl.textContent = plotD;
+    });
+  </script>
+</body>
+</html>
