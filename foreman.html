@@ -124,6 +124,18 @@ document.getElementById("foremanName").value =
   btn.disabled = true;
   btn.textContent = "Submitting...";
 
+
+const foremanName = document.getElementById("foremanName").value.trim();
+
+if (!foremanName) {
+  alert("Please enter Foreman Name");
+  btn.disabled = false;
+  btn.textContent = "Submit";
+  return;
+}
+
+
+
   try {
 
     // ✅ 버튼에서 선택된 값 가져오기
