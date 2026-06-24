@@ -56,6 +56,61 @@
     <tbody id="summaryBody"></tbody>
   </table>
 
+<!-- ✅ 포맨별 총 인원 집계 + 우측 4x4 요약 -->
+<div style="display:flex; gap:20px; align-items:flex-start; margin-bottom:30px;">
+
+  <div>
+    <h3>포맨별 총 인원 집계</h3>
+    <table border="1" cellpadding="8">
+      <thead>
+        <tr>
+          <th>No</th>
+          <th>포맨</th>
+          <th>총 인원</th>
+          <th>PLOT-C</th>
+          <th>PLOT-D</th>
+        </tr>
+      </thead>
+      <tbody id="foremanSummaryBody"></tbody>
+    </table>
+  </div>
+
+  <div>
+    <h3>플롯별 포맨 요약</h3>
+    <table border="1" cellpadding="8">
+      <thead>
+        <tr>
+          <th>구분</th>
+          <th>전체</th>
+          <th>PLOT-C</th>
+          <th>PLOT-D</th>
+        </tr>
+      </thead>
+      <tbody id="foremanMiniSummaryBody">
+        <tr>
+          <td>포맨 수</td>
+          <td id="miniForemanTotal">0</td>
+          <td id="miniForemanC">0</td>
+          <td id="miniForemanD">0</td>
+        </tr>
+        <tr>
+          <td>총 인원</td>
+          <td id="miniPeopleTotal">0</td>
+          <td id="miniPeopleC">0</td>
+          <td id="miniPeopleD">0</td>
+        </tr>
+        <tr>
+          <td>평균 인원/포맨</td>
+          <td id="miniAvgTotal">0</td>
+          <td id="miniAvgC">0</td>
+          <td id="miniAvgD">0</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
   <!-- ✅ 상세 작업 목록 -->
   <h3>상세 작업 목록 (확인용)</h3>
   <table border="1" cellpadding="8">
@@ -120,6 +175,19 @@
 
     const tableBody = document.getElementById("tableBody");
     const summaryBody = document.getElementById("summaryBody");
+    const foremanSummaryBody = document.getElementById("foremanSummaryBody");
+
+const miniForemanTotal = document.getElementById("miniForemanTotal");
+const miniForemanC = document.getElementById("miniForemanC");
+const miniForemanD = document.getElementById("miniForemanD");
+
+const miniPeopleTotal = document.getElementById("miniPeopleTotal");
+const miniPeopleC = document.getElementById("miniPeopleC");
+const miniPeopleD = document.getElementById("miniPeopleD");
+
+const miniAvgTotal = document.getElementById("miniAvgTotal");
+const miniAvgC = document.getElementById("miniAvgC");
+const miniAvgD = document.getElementById("miniAvgD");
 
     const totalPeopleEl = document.getElementById("totalPeople");
     const plotCEl = document.getElementById("plotC");
@@ -300,6 +368,93 @@
       });
     }
 
+
+
+
+function renderForemanSummary(rows) {
+  foremanSummaryBody.innerHTML = "";
+
+  const map = {};
+
+  rows.forEach(row => {
+    const rawName = (row.foremanName || "Unknown").trim();
+    const nameKey = rawName.toLowerCase();
+    const plot = row.plot || "";
+    const people = Number(row.people || 0);
+
+    if (!map[nameKey]) {
+      map[nameKey] = {
+        displayName: rawName,
+        total: 0,
+        plotC: 0,
+        plotD: 0
+      };
+    }
+
+    map[nameKey].total += people;
+
+    if (plot === "PLOT-C") map[nameKey].plotC += people;
+    if (plot === "PLOT-D") map[nameKey].plotD += people;
+  });
+
+ 
+const foremanList = Object.values(map).sort((a, b) => {
+  if (b.total !== a.total) {
+    return b.total - a.total; // 인원 많은 순
+  }
+  return a.displayName.localeCompare(b.displayName); // 이름순
+});
+
+
+  foremanList.forEach((item, index) => {
+    let plotLabel = "";
+    if (item.plotC > 0 && item.plotD > 0) {
+      plotLabel = "[C,D]";
+    } else if (item.plotC > 0) {
+      plotLabel = "[C]";
+    } else if (item.plotD > 0) {
+      plotLabel = "[D]";
+    }
+
+    const row = `
+      <tr>
+        <td>${index + 1}</td>
+        <td>${escapeHtml(plotLabel)} ${escapeHtml(item.displayName)}</td>
+        <td><b>${item.total}</b></td>
+        <td>${item.plotC}</td>
+        <td>${item.plotD}</td>
+      </tr>
+    `;
+
+    foremanSummaryBody.innerHTML += row;
+  });
+
+  // ✅ 우측 4x4 요약표 계산
+  const uniqueForemanTotal = foremanList.length;
+  const uniqueForemanC = foremanList.filter(item => item.plotC > 0).length;
+  const uniqueForemanD = foremanList.filter(item => item.plotD > 0).length;
+
+  const totalPeople = foremanList.reduce((sum, item) => sum + item.total, 0);
+  const totalPeopleC = foremanList.reduce((sum, item) => sum + item.plotC, 0);
+  const totalPeopleD = foremanList.reduce((sum, item) => sum + item.plotD, 0);
+
+  const avgTotal = uniqueForemanTotal > 0 ? (totalPeople / uniqueForemanTotal).toFixed(1) : "0";
+  const avgC = uniqueForemanC > 0 ? (totalPeopleC / uniqueForemanC).toFixed(1) : "0";
+  const avgD = uniqueForemanD > 0 ? (totalPeopleD / uniqueForemanD).toFixed(1) : "0";
+
+  miniForemanTotal.textContent = uniqueForemanTotal;
+  miniForemanC.textContent = uniqueForemanC;
+  miniForemanD.textContent = uniqueForemanD;
+
+  miniPeopleTotal.textContent = totalPeople;
+  miniPeopleC.textContent = totalPeopleC;
+  miniPeopleD.textContent = totalPeopleD;
+
+  miniAvgTotal.textContent = avgTotal;
+  miniAvgC.textContent = avgC;
+  miniAvgD.textContent = avgD;
+}
+
     // 상세 목록
     function renderDetail(rows) {
       tableBody.innerHTML = "";
@@ -356,6 +511,7 @@
     function renderAll() {
       const filteredRows = getFilteredRows();
       renderSummary(filteredRows);
+      renderForemanSummary(filteredRows); 
       renderDetail(filteredRows);
     }
 
