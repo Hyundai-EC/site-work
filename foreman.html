@@ -4,6 +4,27 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Foreman Work Input</title>
+<style>
+ #areaButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.area-btn {
+  padding: 10px 18px;
+  border: 1px solid #ccc;
+  background: #f1f1f1;
+  cursor: pointer;
+  border-radius: 20px;   /* ✅ 둥근 모서리 */
+}
+
+.area-btn.active {
+  background: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+</style>
 </head>
 <body>
   <h2>Foreman Work Input</h2>
@@ -23,16 +44,20 @@
   </div>
   <br>
 
-  <div>
-    <label>Work Area</label>
-    <select id="area">
-      <option value="Tower">Tower</option>
-      <option value="Podium">Podium</option>
-      <option value="LG">LG</option>
-      <option value="Basement">Basement</option>
-    </select>
-  </div>
-  <br>
+ 
+<div>
+  <label>Work Area</label><br>
+
+  <div id="areaButtons">
+  <button type="button" class="area-btn" data-value="All">All</button>
+  <button type="button" class="area-btn" data-value="Tower">Tower</button>
+  <button type="button" class="area-btn" data-value="Podium">Podium</button>
+  <button type="button" class="area-btn" data-value="LG">LG</button>
+  <button type="button" class="area-btn" data-value="Basement">Basement</button>
+</div>
+</div>
+<br>
+
 
   <div>
     <label>Work Type</label>
@@ -88,41 +113,96 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    window.sendData = async function () {
+document.getElementById("foremanName").value =
+  localStorage.getItem("foremanName") || "";
+ 
 
-      const btn = document.getElementById("submitBtn");
+   window.sendData = async function () {
 
-      // ✅ 버튼 잠금
-      btn.disabled = true;
-      btn.textContent = "Submitting...";
+  const btn = document.getElementById("submitBtn");
 
-      try {
-        await addDoc(collection(db, "workData"), {
+  btn.disabled = true;
+  btn.textContent = "Submitting...";
 
-          foremanName: document.getElementById("foremanName").value,
-          plot: document.getElementById("plot").value,
-          area: document.getElementById("area").value,
-          workType: document.getElementById("workType").value,
-          location: document.getElementById("location").value,
-          people: Number(document.getElementById("people").value || 0),
-          description: document.getElementById("description").value,
-          createdAt: serverTimestamp(),
-          dateText: new Date().toLocaleDateString("en-GB"),
-          timeText: new Date().toLocaleTimeString("en-GB")
+  try {
 
-        });
+    // ✅ 버튼에서 선택된 값 가져오기
+    let selectedAreas = Array.from(document.querySelectorAll(".area-btn.active"))
+      .map(btn => btn.dataset.value);
 
-        alert("Submitted successfully");
+if (selectedAreas.length === 0) {
+  alert("Please select Work Area");
+  btn.disabled = false;
+  btn.textContent = "Submit";
+  return;
+}
 
-      } catch (error) {
-        console.error(error);
-        alert("Submission failed: " + error.message);
+    // ✅ All 선택 처리
+    if (selectedAreas.includes("All")) {
+      selectedAreas = ["All"];
+    }
 
-        // ❗ 실패 시 다시 활성화
-        btn.disabled = false;
-        btn.textContent = "Submit";
-      }
-    };
+    await addDoc(collection(db, "workData"), {
+
+      foremanName: document.getElementById("foremanName").value,
+      plot: document.getElementById("plot").value,
+
+      // ✅ 여기 유지
+      area: selectedAreas.join(", "),
+     // ✅ 포맨 이름 저장
+
+      workType: document.getElementById("workType").value,
+      location: document.getElementById("location").value,
+      people: Number(document.getElementById("people").value || 0),
+      description: document.getElementById("description").value,
+      createdAt: serverTimestamp(),
+      dateText: new Date().toLocaleDateString("en-GB"),
+      timeText: new Date().toLocaleTimeString("en-GB")
+
+    });
+localStorage.setItem("foremanName", document.getElementById("foremanName").value);
+    alert("Submitted successfully");
+
+// ✅ 제출 후 초기화
+document.querySelectorAll(".area-btn").forEach(btn => btn.classList.remove("active"));
+document.getElementById("location").value = "";
+document.getElementById("people").value = "";
+document.getElementById("description").value = "";
+btn.disabled = false;
+btn.textContent = "Submit";
+
+
+  } catch (error) {
+    console.error(error);
+    alert("Submission failed: " + error.message);
+
+    btn.disabled = false;
+    btn.textContent = "Submit";
+  }
+};
+const areaButtons = document.querySelectorAll(".area-btn");
+
+areaButtons.forEach(btn => {
+  btn.addEventListener("click", () => {
+    const value = btn.dataset.value;
+
+    if (value === "All") {
+      // ✅ All만 선택
+      areaButtons.forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+    } else {
+      // ✅ All 해제
+      areaButtons.forEach(b => {
+        if (b.dataset.value === "All") b.classList.remove("active");
+      });
+
+      // ✅ toggle (켜기/끄기)
+      btn.classList.toggle("active");
+    }
+  });
+});
+``
+
   </script>
 </body>
 </html>
