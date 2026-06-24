@@ -37,7 +37,6 @@
   <table border="1" cellpadding="8" style="margin-bottom:30px;">
     <thead>
       <tr>
-        
         <th>날짜</th>
         <th>총 인원</th>
         <th>PLOT-C</th>
@@ -52,7 +51,6 @@
         <th>LCS</th>
         <th>TEMP</th>
         <th>Energize</th>
-
       </tr>
     </thead>
     <tbody id="summaryBody"></tbody>
@@ -141,8 +139,12 @@
       "ELV(Honeywell)",
       "Defect",
       "Snag",
+      "LV",
+      "scaffolder",
+      "ABD",
       "LCS",
-      "TEMP"
+      "TEMP",
+      "Energize"
     ];
 
     function escapeHtml(value) {
@@ -243,15 +245,12 @@
             total: 0,
             plotC: 0,
             plotD: 0,
-            workTypePeople: {
-              "ELV1(FA,ACS)": 0,
-              "ELV(Honeywell)": 0,
-              "Defect": 0,
-              "Snag": 0,
-              "LCS": 0,
-              "TEMP": 0
-            }
+            workTypePeople: {}
           };
+
+          WORK_TYPES.forEach(type => {
+            summaryMap[date].workTypePeople[type] = 0;
+          });
         }
 
         summaryMap[date].total += people;
@@ -269,7 +268,7 @@
       if (dates.length === 0) {
         summaryBody.innerHTML = `
           <tr>
-            <td colspan="10">데이터가 없습니다.</td>
+            <td colspan="14">데이터가 없습니다.</td>
           </tr>
         `;
         return;
@@ -288,8 +287,12 @@
             <td>${s.workTypePeople["ELV(Honeywell)"]}</td>
             <td>${s.workTypePeople["Defect"]}</td>
             <td>${s.workTypePeople["Snag"]}</td>
+            <td>${s.workTypePeople["LV"]}</td>
+            <td>${s.workTypePeople["scaffolder"]}</td>
+            <td>${s.workTypePeople["ABD"]}</td>
             <td>${s.workTypePeople["LCS"]}</td>
             <td>${s.workTypePeople["TEMP"]}</td>
+            <td>${s.workTypePeople["Energize"]}</td>
           </tr>
         `;
 
