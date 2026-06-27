@@ -1,3 +1,7 @@
+
+
+
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -7,6 +11,10 @@
 </head>
 <body>
   <h2>관리자 현황판</h2>
+
+<h3>📢 공지사항</h3>
+<textarea id="noticeInput" rows="3" style="width:400px;"></textarea><br>
+<button onclick="saveNotice()">공지 저장</button>
 
   <!-- ✅ 필터 영역 -->
   <div style="margin-bottom:20px; padding:10px; border:1px solid #ccc;">
@@ -151,15 +159,18 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import {
-      getFirestore,
-      collection,
-      query,
-      orderBy,
-      onSnapshot,
-      doc,
-      deleteDoc
-    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+   
+import {
+  getFirestore,
+  collection,
+  query,
+  orderBy,
+  onSnapshot,
+  doc,
+  deleteDoc,
+  setDoc
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
 
     const firebaseConfig = {
       apiKey: "AIzaSyA4ifZEP4N_Ch9e0r_4hwvXNZgXFwbFM1c",
@@ -172,6 +183,22 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
+
+window.saveNotice = async function () {
+  const text = document.getElementById("noticeInput").value;
+
+  try {
+    await setDoc(doc(db, "config", "notice"), {
+      message: text,
+      updatedAt: new Date()
+    });
+
+    alert("공지 저장 완료");
+  } catch (e) {
+    console.error(e);
+    alert("저장 실패");
+  }
+};
 
     const tableBody = document.getElementById("tableBody");
     const summaryBody = document.getElementById("summaryBody");
