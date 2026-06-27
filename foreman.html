@@ -96,10 +96,35 @@
 
   <!-- ✅ id 추가 -->
   <button id="submitBtn" onclick="sendData()">Submit</button>
+   
+<hr>
+
+<div id="noticeBox" style="
+  margin-top:20px;
+  padding:15px;
+  border:2px solid red;
+  background:#fff5f5;
+  color:red;
+  font-size:20px;
+  font-weight:bold;
+  text-align:center;
+">
+Notice...
+</div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  
+
+import { 
+  getFirestore, 
+  collection, 
+  addDoc, 
+  serverTimestamp,
+  doc,
+  onSnapshot     // ✅ 이 두 개 추가
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
 
     const firebaseConfig = {
       apiKey: "AIzaSyA4ifZEP4N_Ch9e0r_4hwvXNZgXFwbFM1c",
@@ -112,6 +137,22 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
+
+
+
+window.addEventListener("DOMContentLoaded", () => {
+  const noticeBox = document.getElementById("noticeBox");
+
+  onSnapshot(doc(db, "config", "notice"), (docSnap) => {
+    if (docSnap.exists) {   // ✅ 여기 수정
+noticeBox.innerHTML = `📢 ${docSnap.data().message}`;
+    } else {
+      noticeBox.textContent = "Notice..";
+    }
+  });
+});
+
+       
 
 document.getElementById("foremanName").value =
   localStorage.getItem("foremanName") || "";
