@@ -112,6 +112,46 @@
 Notice...
 </div>
 
+<hr>
+
+<h3>🔑 Master Key Tracker</h3>
+
+<div style="margin-top:10px; padding:15px; border:1px solid #ccc; border-radius:10px;">
+
+  <div>
+    <label>Area</label>
+    <select id="keyArea">
+      <option value="T-Room">T-Room</option>
+      <option value="T-Terracotta">T-Terracotta</option>
+      <option value="Basement LG">Basement LG</option>
+      <option value="Podium">Podium</option>
+    </select>
+  </div>
+  <br>
+
+  <div>
+  <label>Plot (Auto from above selection)</label>
+   
+  </div>
+  <br>
+
+  <div>
+    <label>Name</label>
+    <input type="text" id="keyName">
+  </div>
+  <br>
+
+  <div>
+    <label>Contact</label>
+    <input type="text" id="keyContact">
+  </div>
+  <br>
+
+  <button id="keySubmitBtn" onclick="sendKeyData()">Submit Key Borrow</button>
+
+</div>
+
+
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   
@@ -254,7 +294,56 @@ areaButtons.forEach(btn => {
     }
   });
 });
-``
+window.sendKeyData = async function () {
+
+  const btn = document.getElementById("keySubmitBtn");
+
+  btn.disabled = true;
+  btn.textContent = "Submitting...";
+
+  const name = document.getElementById("keyName").value.trim() ||
+  document.getElementById("foremanName").value.trim();
+  const contact = document.getElementById("keyContact").value.trim();
+
+  if (!name || !contact) {
+    alert("Please enter Name and Contact");
+    btn.disabled = false;
+    btn.textContent = "Submit Key Borrow";
+    return;
+  }
+
+  try {
+
+    await addDoc(collection(db, "masterKey"), {
+
+      area: document.getElementById("keyArea").value,
+      plot: document.getElementById("plot").value,
+      name: name,
+      contact: contact,
+
+      status: "Borrowed",   // ✅ 핵심
+      createdAt: serverTimestamp()
+
+    });
+
+    alert("Key Borrowed Successfully");
+
+    // ✅ 초기화
+    document.getElementById("keyName").value = "";
+    document.getElementById("keyContact").value = "";
+
+    btn.disabled = false;
+    btn.textContent = "Submit Key Borrow";
+
+  } catch (error) {
+    console.error(error);
+    alert("Error: " + error.message);
+
+    btn.disabled = false;
+    btn.textContent = "Submit Key Borrow";
+  }
+};
+
 
   </script>
 </body>
