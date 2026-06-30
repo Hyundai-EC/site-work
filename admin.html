@@ -119,6 +119,18 @@
 
 </div>
 
+<h3>🔑 Master Key Tracker</h3>
+<table border="1" cellpadding="8" style="margin-bottom:30px; min-width:900px; text-align:center;">
+  <thead>
+    <tr>
+      <th>Area</th>
+      <th>PLOT-C</th>
+      <th>PLOT-D</th>
+    </tr>
+  </thead>
+  <tbody id="masterKeyBody"></tbody>
+</table>
+
   <!-- ✅ 상세 작업 목록 -->
   <h3>상세 작업 목록 (확인용)</h3>
   <table border="1" cellpadding="8">
@@ -168,7 +180,8 @@ import {
   onSnapshot,
   doc,
   deleteDoc,
-  setDoc
+  setDoc,
+  updateDoc
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 
@@ -203,6 +216,7 @@ window.saveNotice = async function () {
     const tableBody = document.getElementById("tableBody");
     const summaryBody = document.getElementById("summaryBody");
     const foremanSummaryBody = document.getElementById("foremanSummaryBody");
+const masterKeyBody = document.getElementById("masterKeyBody");
 
 const miniForemanTotal = document.getElementById("miniForemanTotal");
 const miniForemanC = document.getElementById("miniForemanC");
@@ -241,6 +255,13 @@ const miniAvgD = document.getElementById("miniAvgD");
       "TEMP",
       "Energize"
     ];
+
+const MASTER_AREAS = [
+  "T-Room",
+  "T-Terracotta",
+  "Basement LG",
+  "Podium"
+];
 
     function escapeHtml(value) {
       return String(value ?? "")
@@ -482,6 +503,101 @@ const foremanList = Object.values(map).sort((a, b) => {
   miniAvgD.textContent = avgD;
 }
 
+function renderMasterKey(rows) {
+  masterKeyBody.innerHTML = "";
+
+  // 최신 데이터가 먼저 오도록 정렬
+  const sorted = rows.slice().sort((a, b) => {
+    const aSec = a.createdAt?.seconds || 0;
+    const bSec = b.createdAt?.seconds || 0;
+    const aNano = a.createdAt?.nanoseconds || 0;
+    const bNano = b.createdAt?.nanoseconds || 0;
+
+    if (bSec !== aSec) return bSec - aSec;
+    return bNano - aNano;
+  });
+
+  // area + plot 기준으로 가장 최신 상태만 저장
+  const latestMap = {};
+
+  sorted.forEach(item => {
+    const key = `${item.area}__${item.plot}`;
+    if (!latestMap[key]) {
+      latestMap[key] = item;
+    }
+  });
+
+  MASTER_AREAS.forEach(area => {
+    const cItem = latestMap[`${area}__PLOT-C`];
+    const dItem = latestMap[`${area}__PLOT-D`];
+
+    const row = `
+      <tr>
+        <td><b>${escapeHtml(area)}</b></td>
+        ${renderKeyCell(cItem)}
+        ${renderKeyCell(dItem)}
+      </tr>
+    `;
+
+    masterKeyBody.innerHTML += row;
+  });
+}
+
+function renderKeyCell(item) {
+  // 데이터가 없으면 기본 Returned(초록)
+  if (!item) {
+    return `
+      <td style="background:#e8f7e8; color:#1f7a1f;">
+        <div><b>Returned</b></div>
+        <div>-</div>
+        <div>-</div>
+      </td>
+    `;
+  }
+
+  const status = item.status || "Returned";
+  const name = escapeHtml(item.name || "-");
+  const contact = escapeHtml(item.contact || "-");
+
+  if (status === "Borrowed") {
+    return `
+      <td style="background:#ffe5e5; color:#b30000;">
+        <div><b>Borrowed</b></div>
+        <div>${name}</div>
+        <div>${contact}</div>
+        <div style="margin-top:6px;">
+          <button onclick="markReturned('${item.id}')">Return</button>
+        </div>
+      </td>
+    `;
+  }
+
+  return `
+    <td style="background:#e8f7e8; color:#1f7a1f;">
+      <div><b>Returned</b></div>
+      <div>${name}</div>
+      <div>${contact}</div>
+    </td>
+  `;
+}
+
+window.markReturned = async function(docId) {
+  const ok = confirm("이 Master Key를 Returned 상태로 변경하시겠습니까?");
+  if (!ok) return;
+
+  try {
+    await updateDoc(doc(db, "masterKey", docId), {
+      status: "Returned",
+      returnedAt: new Date()
+    });
+
+    alert("Returned 처리 완료");
+  } catch (error) {
+    console.error(error);
+    alert("Returned 처리 실패: " + error.message);
+  }
+};
+
     // 상세 목록
     function renderDetail(rows) {
       tableBody.innerHTML = "";
@@ -563,11 +679,24 @@ const foremanList = Object.values(map).sort((a, b) => {
         ...docSnap.data()
       }));
 
+
       const sortedRows = sortRows(allRows);
       fillDateOptions(sortedRows);
       fillForemanOptions(sortedRows);
       renderAll();
     });
+
+const masterKeyQuery = query(collection(db, "masterKey"), orderBy("createdAt", "desc"));
+
+onSnapshot(masterKeyQuery, (snapshot) => {
+  const keyRows = snapshot.docs.map(docSnap => ({
+    id: docSnap.id,
+    ...docSnap.data()
+  }));
+
+  renderMasterKey(keyRows);
+});
+
 
     // 필터 이벤트
     dateFilter.addEventListener("change", renderAll);
