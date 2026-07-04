@@ -73,6 +73,31 @@
     <tbody id="summaryBody"></tbody>
   </table>
 
+
+<h3>포맨 카테고리별 집계 (보고용)</h3>
+
+<table border="1" cellpadding="8" style="margin-bottom:30px;">
+  <thead>
+    <tr>
+      <th>날짜</th>
+      <th>총 포맨</th>
+      <th>ELV1(FA,ACS)</th>
+      <th>ELV(Honeywell)</th>
+      <th>Defect</th>
+      <th>Snag</th>
+      <th>LV</th>
+      <th>scaffolder</th>
+      <th>ABD</th>
+      <th>LCS</th>
+      <th>TEMP</th>
+      <th>Energize</th>
+    </tr>
+  </thead>
+
+  <tbody id="foremanWorkTypeBody"></tbody>
+</table>
+
+
 <!-- ✅ 포맨별 총 인원 집계 + 우측 4x4 요약 -->
 <div style="display:flex; gap:20px; align-items:flex-start; margin-bottom:30px;">
 
@@ -225,6 +250,12 @@ window.saveNotice = async function () {
     const tableBody = document.getElementById("tableBody");
     const summaryBody = document.getElementById("summaryBody");
     const foremanSummaryBody = document.getElementById("foremanSummaryBody");
+
+
+const foremanWorkTypeBody =
+  document.getElementById("foremanWorkTypeBody");
+
+
 const masterKeyBody = document.getElementById("masterKeyBody");
 
 const miniForemanTotal = document.getElementById("miniForemanTotal");
@@ -425,7 +456,98 @@ const MASTER_AREAS = [
       });
     }
 
+function renderForemanWorkTypeSummary(rows) {
 
+  foremanWorkTypeBody.innerHTML = "";
+
+  const summaryMap = {};
+
+  rows.forEach(row => {
+
+    const date = row.dateText || "날짜없음";
+    const foreman = (row.foremanName || "").trim();
+    const workType = row.workType || "";
+    const people = Number(row.people || 0);
+
+    if (!foreman) return;
+
+    if (!summaryMap[date]) {
+      summaryMap[date] = {};
+    }
+
+    if (!summaryMap[date][foreman]) {
+      summaryMap[date][foreman] = {};
+    }
+
+    if (!summaryMap[date][foreman][workType]) {
+      summaryMap[date][foreman][workType] = 0;
+    }
+
+    summaryMap[date][foreman][workType] += people;
+  });
+
+  const dates = Object.keys(summaryMap);
+
+  if (dates.length === 0) {
+    foremanWorkTypeBody.innerHTML = `
+      <tr>
+        <td colspan="12">데이터가 없습니다.</td>
+      </tr>
+    `;
+    return;
+  }
+
+  dates.forEach(date => {
+
+    const typeCount = {};
+
+    WORK_TYPES.forEach(type => {
+      typeCount[type] = 0;
+    });
+
+    const foremen = Object.keys(summaryMap[date]);
+
+    foremen.forEach(foreman => {
+
+      const workData = summaryMap[date][foreman];
+
+      let maxType = "";
+      let maxPeople = -1;
+
+      Object.entries(workData).forEach(([type, people]) => {
+
+        if (people > maxPeople) {
+          maxPeople = people;
+          maxType = type;
+        }
+
+      });
+
+      if (maxType) {
+        typeCount[maxType]++;
+      }
+
+    });
+
+    foremanWorkTypeBody.innerHTML += `
+      <tr>
+        <td>${date}</td>
+        <td><b>${foremen.length}</b></td>
+
+        <td>${typeCount["ELV1(FA,ACS)"]}</td>
+        <td>${typeCount["ELV(Honeywell)"]}</td>
+        <td>${typeCount["Defect"]}</td>
+        <td>${typeCount["Snag"]}</td>
+        <td>${typeCount["LV"]}</td>
+        <td>${typeCount["scaffolder"]}</td>
+        <td>${typeCount["ABD"]}</td>
+        <td>${typeCount["LCS"]}</td>
+        <td>${typeCount["TEMP"]}</td>
+        <td>${typeCount["Energize"]}</td>
+      </tr>
+    `;
+  });
+}
 
 
 function renderForemanSummary(rows) {
@@ -660,12 +782,17 @@ window.markReturned = async function(docId) {
       plotDEl.textContent = plotD;
     }
 
-    function renderAll() {
-      const filteredRows = getFilteredRows();
-      renderSummary(filteredRows);
-      renderForemanSummary(filteredRows); 
-      renderDetail(filteredRows);
-    }
+  function renderAll() {
+  const filteredRows = getFilteredRows();
+
+  renderSummary(filteredRows);
+
+  renderForemanWorkTypeSummary(filteredRows);
+
+  renderForemanSummary(filteredRows);
+
+  renderDetail(filteredRows);
+}
 
     // 삭제 기능
     window.deleteRow = async function(docId) {
