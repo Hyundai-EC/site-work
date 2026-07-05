@@ -7,19 +7,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+ </head>
+
+<body>
 
 <div style="display:flex; justify-content:space-between; align-items:center;">
- 
+  <h2 style="margin:0;">관리자 현황판</h2>
   <div style="font-size:14px; color:gray;">
     made by Minho Shin
   </div>
 </div>
- 
-
-
-</head>
-<body>
-  <h2>관리자 현황판</h2>
 
 <h3>📢 공지사항</h3>
 <textarea id="noticeInput" rows="3" style="width:400px;"></textarea><br>
@@ -587,6 +584,7 @@ const foremanList = Object.values(map).sort((a, b) => {
 
   foremanList.forEach((item, index) => {
     let plotLabel = "";
+	const isBothPlot = item.plotC > 0 && item.plotD > 0;
     if (item.plotC > 0 && item.plotD > 0) {
       plotLabel = "[C,D]";
     } else if (item.plotC > 0) {
@@ -595,9 +593,13 @@ const foremanList = Object.values(map).sort((a, b) => {
       plotLabel = "[D]";
     }
 
+
+
     const row = `
       <tr>
-        <td>${index + 1}</td>
+        <td style="${isBothPlot ? 'background:yellow; font-weight:bold;' : ''}">
+  ${index + 1}
+</td>
         <td>${escapeHtml(plotLabel)} ${escapeHtml(item.displayName)}</td>
         <td><b>${item.total}</b></td>
         <td>${item.plotC}</td>
