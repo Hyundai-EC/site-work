@@ -43,6 +43,11 @@
       <option value="ALL">전체 포맨</option>
     </select>
 
+    <label style="margin-left:20px;">조회기간:</label>
+<input type="date" id="startDate">
+<span style="margin:0 5px;">~</span>
+<input type="date" id="endDate">
+
     <button id="resetFilterBtn" style="margin-left:20px;">필터 초기화</button>
   </div>
 
@@ -289,7 +294,9 @@ const miniAbsentD = document.getElementById("miniAbsentD");
     const plotFilter = document.getElementById("plotFilter");
     const foremanFilter = document.getElementById("foremanFilter");
     const resetFilterBtn = document.getElementById("resetFilterBtn");
+   const startDate = document.getElementById("startDate");
 
+const endDate = document.getElementById("endDate");
     const q = query(collection(db, "workData"), orderBy("createdAt", "desc"));
 
     let allRows = [];
@@ -335,7 +342,20 @@ const MASTER_AREAS = [
         return bNano - aNano;
       });
     }
+   function parseDate(dateStr) {
 
+  if (!dateStr) return new Date(0);
+
+  const parts = dateStr.split("/");
+
+  if (parts.length !== 3) {
+    return new Date(0);
+  }
+
+  const [dd, mm, yyyy] = parts;
+
+  return new Date(`${yyyy}-${mm}-${dd}`);
+}
     // 날짜 필터 옵션 채우기
     function fillDateOptions(rows) {
       const currentValue = dateFilter.value;
@@ -382,19 +402,49 @@ const MASTER_AREAS = [
 
     // 필터 적용
     function getFilteredRows() {
-      const selectedDate = dateFilter.value;
-      const selectedPlot = plotFilter.value;
-      const selectedForeman = foremanFilter.value;
 
-      return sortRows(allRows).filter(row => {
-        const matchDate = selectedDate === "ALL" || row.dateText === selectedDate;
-        const matchPlot = selectedPlot === "ALL" || row.plot === selectedPlot;
-        const matchForeman =
-          selectedForeman === "ALL" || (row.foremanName || "") === selectedForeman;
+  const selectedDate = dateFilter.value;
+  const selectedPlot = plotFilter.value;
+  const selectedForeman = foremanFilter.value;
 
-        return matchDate && matchPlot && matchForeman;
-      });
+  const start = startDate.value ? new Date(startDate.value) : null;
+  const end = endDate.value ? new Date(endDate.value) : null;
+
+  return sortRows(allRows).filter(row => {
+
+    const matchDate =
+      selectedDate === "ALL" ||
+      row.dateText === selectedDate;
+
+    const matchPlot =
+      selectedPlot === "ALL" ||
+      row.plot === selectedPlot;
+
+    const matchForeman =
+      selectedForeman === "ALL" ||
+      (row.foremanName || "") === selectedForeman;
+
+    let matchPeriod = true;
+
+    if (start || end) {
+
+      const rowDate = parseDate(row.dateText);
+
+      if (start && rowDate < start)
+        matchPeriod = false;
+
+      if (end && rowDate > end)
+        matchPeriod = false;
     }
+
+    return (
+      matchDate &&
+      matchPlot &&
+      matchForeman &&
+      matchPeriod
+    );
+  });
+}
 
     // 날짜별 집계표
     function renderSummary(rows) {
@@ -429,8 +479,13 @@ const MASTER_AREAS = [
           summaryMap[date].workTypePeople[workType] += people;
         }
       });
+    
+     let dates = Object.keys(summaryMap)
+  .sort((a,b) => parseDate(b) - parseDate(a));
 
-      const dates = Object.keys(summaryMap);
+if (!startDate.value && !endDate.value) {
+  dates = dates.slice(0, 7);
+}
 
       if (dates.length === 0) {
         summaryBody.innerHTML = `
@@ -497,7 +552,12 @@ function renderForemanWorkTypeSummary(rows) {
     summaryMap[date][foreman][workType] += people;
   });
 
-  const dates = Object.keys(summaryMap);
+  let dates = Object.keys(summaryMap)
+  .sort((a,b) => parseDate(b) - parseDate(a));
+
+if (!startDate.value && !endDate.value) {
+  dates = dates.slice(0, 7);
+}
 
   if (dates.length === 0) {
     foremanWorkTypeBody.innerHTML = `
@@ -871,13 +931,20 @@ onSnapshot(masterKeyQuery, (snapshot) => {
     dateFilter.addEventListener("change", renderAll);
     plotFilter.addEventListener("change", renderAll);
     foremanFilter.addEventListener("change", renderAll);
+startDate.addEventListener("change", renderAll);
+
+endDate.addEventListener("change", renderAll);
 
     resetFilterBtn.addEventListener("click", () => {
-      dateFilter.value = "ALL";
-      plotFilter.value = "ALL";
-      foremanFilter.value = "ALL";
-      renderAll();
-    });
+  dateFilter.value = "ALL";
+  plotFilter.value = "ALL";
+  foremanFilter.value = "ALL";
+
+  startDate.value = "";
+  endDate.value = "";
+
+  renderAll();
+});
   </script>
 </body>
 </html>
