@@ -321,7 +321,10 @@ import {
   addDoc, 
   serverTimestamp,
   doc,
-  onSnapshot     // ✅ 이 두 개 추가
+  onSnapshot,
+  query,
+  where,
+  getDocs
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 
@@ -336,6 +339,109 @@ import {
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
+
+// 오늘 날짜를 DD/MM/YYYY 형식으로 가져오기
+function getTodayDateText() {
+  return new Date().toLocaleDateString("en-GB");
+}
+
+
+// 중복 경고음
+function playDuplicateAlarm() {
+  try {
+    const AudioContextClass =
+      window.AudioContext || window.webkitAudioContext;
+
+    const audioContext = new AudioContextClass();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+
+    oscillator.type = "square";
+    oscillator.frequency.setValueAtTime(
+      1000,
+      audioContext.currentTime
+    );
+
+    gainNode.gain.setValueAtTime(
+      0.18,
+      audioContext.currentTime
+    );
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    oscillator.start();
+
+    setTimeout(() => {
+      oscillator.stop();
+      audioContext.close();
+    }, 600);
+
+  } catch (error) {
+    console.log("Alarm sound unavailable:", error);
+  }
+}
+
+
+// 오늘 등록된 W-ID 중복 검사
+async function checkTodayDuplicateWid(wid) {
+
+  const cleanWid = String(wid || "").trim();
+
+  if (!cleanWid) {
+    return null;
+  }
+
+  const todayDateText = getTodayDateText();
+
+  const todayQuery = query(
+    collection(db, "workData"),
+    where("dateText", "==", todayDateText)
+  );
+
+  const snapshot = await getDocs(todayQuery);
+
+  for (const documentSnapshot of snapshot.docs) {
+
+    const data = documentSnapshot.data();
+
+    const registeredWids = Array.isArray(data.wids)
+      ? data.wids.map(id => String(id).trim())
+      : [];
+
+    if (registeredWids.includes(cleanWid)) {
+      return {
+        wid: cleanWid,
+        foremanName: data.foremanName || "Unknown",
+        idCode: data.idCode || "-",
+        plot: data.plot || "-",
+        area: data.area || "-",
+        location: data.location || "-"
+      };
+    }
+  }
+
+  return null;
+}
+
+
+// 중복 경고 표시
+function showDuplicateWarning(duplicate) {
+
+  playDuplicateAlarm();
+
+  alert(
+    "DUPLICATED W-ID\n\n" +
+    "W-ID: " + duplicate.wid + "\n\n" +
+    "Already used today by:\n" +
+    "Foreman: " + duplicate.foremanName + "\n" +
+    "ID Code: " + duplicate.idCode + "\n" +
+    "Plot: " + duplicate.plot + "\n" +
+    "Area: " + duplicate.area + "\n" +
+    "Location: " + duplicate.location + "\n\n" +
+    "Please use another W-ID."
+  );
+}
 
 
 
@@ -423,7 +529,54 @@ if (
 
   return;
 }
-const selectedPlot = document.querySelector(".plot-btn.active");
+
+// 현재 입력화면 내부의 중복 검사
+const uniqueWids = new Set(wids);
+
+if (uniqueWids.size !== wids.length) {
+
+  playDuplicateAlarm();
+
+  alert(
+    "DUPLICATED W-ID\n\n" +
+    "The same W-ID is entered more than once.\n" +
+    "Please check all W-ID fields."
+  );
+
+  btn.disabled = false;
+  btn.textContent = "Submit";
+  return;
+}
+
+
+// 저장 직전 오늘 등록된 W-ID 재검사
+for (const wid of wids) {
+
+  const duplicate = await checkTodayDuplicateWid(wid);
+
+  if (duplicate) {
+
+    const matchingInput = Array.from(
+      document.querySelectorAll(".wid-input")
+    ).find(input => input.value.trim() === wid);
+
+    if (matchingInput) {
+      matchingInput.style.border = "3px solid red";
+      matchingInput.style.backgroundColor = "#ffe5e5";
+      matchingInput.dataset.duplicate = "true";
+    }
+
+    showDuplicateWarning(duplicate);
+
+    btn.disabled = false;
+    btn.textContent = "Submit";
+    return;
+  }
+}
+
+
+const selectedPlot =
+  document.querySelector(".plot-btn.active");
 
 if (!selectedPlot) {
 
@@ -472,7 +625,15 @@ localStorage.setItem(
     alert("Submitted successfully");
 
 // ✅ 제출 후 초기화
-document.querySelectorAll(".area-btn").forEach(btn => btn.classList.remove("active"));
+document.querySelectorAll(".plot-btn")
+  .forEach(btn => btn.classList.remove("active"));
+
+const defaultPlot =
+  document.querySelector('.plot-btn[data-value="PLOT-C"]');
+
+if (defaultPlot) {
+  defaultPlot.classList.add("active");
+}
 document.getElementById("location").value = "";
 
 document.getElementById("people").value = "";
@@ -480,8 +641,6 @@ document.getElementById("absent").value = "";
 document.getElementById("description").value = "";
 document.getElementById("widContainer").innerHTML = "";
 
-document.querySelectorAll(".plot-btn")
-.forEach(btn => btn.classList.remove("active"));
 
 btn.disabled = false;
 btn.textContent = "Submit";
@@ -531,6 +690,87 @@ document.getElementById("people").addEventListener("input", () => {
   }
 
 });
+// W-ID 입력 완료 시 당일 중복 검사
+document
+  .getElementById("widContainer")
+  .addEventListener("change", async event => {
+
+    if (!event.target.classList.contains("wid-input")) {
+      return;
+    }
+
+    const input = event.target;
+    const wid = input.value.trim();
+
+    // 이전 경고상태 초기화
+    input.style.border = "";
+    input.style.backgroundColor = "";
+    input.dataset.duplicate = "false";
+
+    if (!wid) {
+      return;
+    }
+
+    // 현재 입력화면 내부의 W-ID 중복 검사
+    const currentInputs = Array.from(
+      document.querySelectorAll(".wid-input")
+    );
+
+    const sameInputs = currentInputs.filter(item =>
+      item.value.trim() === wid
+    );
+
+    if (sameInputs.length > 1) {
+
+      playDuplicateAlarm();
+
+      input.style.border = "3px solid red";
+      input.style.backgroundColor = "#ffe5e5";
+      input.dataset.duplicate = "true";
+
+      alert(
+        "DUPLICATED W-ID\n\n" +
+        "W-ID: " + wid + "\n\n" +
+        "This W-ID is entered more than once in the current form."
+      );
+
+      input.focus();
+      input.select();
+      return;
+    }
+
+    try {
+
+      const duplicate = await checkTodayDuplicateWid(wid);
+
+      if (duplicate) {
+
+        input.style.border = "3px solid red";
+        input.style.backgroundColor = "#ffe5e5";
+        input.dataset.duplicate = "true";
+
+        showDuplicateWarning(duplicate);
+
+        input.focus();
+        input.select();
+
+      } else {
+
+        input.style.border = "2px solid #28a745";
+        input.style.backgroundColor = "#f0fff4";
+        input.dataset.duplicate = "false";
+      }
+
+    } catch (error) {
+
+      console.error("W-ID duplicate check failed:", error);
+
+      alert(
+        "W-ID duplicate check failed.\n" +
+        "Please check the internet connection."
+      );
+    }
+  });
 
 areaButtons.forEach(btn => {
   btn.addEventListener("click", () => {
