@@ -1,7 +1,3 @@
-
-
-
-
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -39,16 +35,22 @@
     </select>
 
     <label style="margin-left:20px;">포맨 선택: </label>
-    <select id="foremanFilter">
-      <option value="ALL">전체 포맨</option>
-    </select>
+  
+<select id="foremanFilter">
+  <option value="ALL">전체 포맨</option>
+</select>
+
+<label style="margin-left:20px;">W-ID:</label>
+<input type="text" id="widFilter" style="width:120px;">
 
     <label style="margin-left:20px;">조회기간:</label>
 <input type="date" id="startDate">
 <span style="margin:0 5px;">~</span>
 <input type="date" id="endDate">
 
-    <button id="resetFilterBtn" style="margin-left:20px;">필터 초기화</button>
+<button id="resetFilterBtn" style="margin-left:20px;">
+  필터 초기화
+</button>
   </div>
 
   <!-- ✅ 날짜별 집계표 -->
@@ -165,14 +167,16 @@
 </div>
 
 <h3>🔑 Master Key Tracker</h3>
-<table border="1" cellpadding="8" style="margin-bottom:30px; min-width:900px; text-align:center;">
+
+<table border="1" cellpadding="8"
+       style="margin-bottom:30px; min-width:600px; text-align:center;">
   <thead>
     <tr>
       <th>Area</th>
       <th>PLOT-C</th>
-      <th>PLOT-D</th>
     </tr>
   </thead>
+
   <tbody id="masterKeyBody"></tbody>
 </table>
 
@@ -184,11 +188,13 @@
         <th>날짜</th>
         <th>시간</th>
         <th>포맨</th>
+<th>ID Code</th>
         <th>플롯</th>
         <th>작업영역</th>
         <th>작업유형</th>
         <th>작업 위치</th>
         <th>인원수</th>
+<th>W-ID</th>
         <th>작업내용</th>
         <th>삭제</th>
       </tr>
@@ -197,19 +203,19 @@
 
     <tfoot>
       <tr>
-        <td colspan="7"><b>총 인원</b></td>
+        <td colspan="8"><b>총 인원</b></td>
         <td id="totalPeople"><b>0</b></td>
-        <td colspan="2"></td>
+        <td colspan="3"></td>
       </tr>
       <tr>
-        <td colspan="7"><b>PLOT-C 인원</b></td>
+        <td colspan="8"><b>PLOT-C 인원</b></td>
         <td id="plotC"><b>0</b></td>
-        <td colspan="2"></td>
+        <td colspan="3"></td>
       </tr>
       <tr>
-        <td colspan="7"><b>PLOT-D 인원</b></td>
+        <td colspan="8"><b>PLOT-D 인원</b></td>
         <td id="plotD"><b>0</b></td>
-        <td colspan="2"></td>
+        <td colspan="3"></td>
       </tr>
     </tfoot>
   </table>
@@ -293,6 +299,8 @@ const miniAbsentD = document.getElementById("miniAbsentD");
     const dateFilter = document.getElementById("dateFilter");
     const plotFilter = document.getElementById("plotFilter");
     const foremanFilter = document.getElementById("foremanFilter");
+const widFilter =
+document.getElementById("widFilter");
     const resetFilterBtn = document.getElementById("resetFilterBtn");
    const startDate = document.getElementById("startDate");
 
@@ -406,6 +414,8 @@ const MASTER_AREAS = [
   const selectedDate = dateFilter.value;
   const selectedPlot = plotFilter.value;
   const selectedForeman = foremanFilter.value;
+const widSearch =
+widFilter.value.trim();
 
   const start = startDate.value ? new Date(startDate.value) : null;
   const end = endDate.value ? new Date(endDate.value) : null;
@@ -424,6 +434,15 @@ const MASTER_AREAS = [
       selectedForeman === "ALL" ||
       (row.foremanName || "") === selectedForeman;
 
+const matchWid =
+  !widSearch ||
+  (
+    Array.isArray(row.wids) &&
+    row.wids.some(id =>
+      String(id).includes(widSearch)
+    )
+  );
+
     let matchPeriod = true;
 
     if (start || end) {
@@ -438,11 +457,12 @@ const MASTER_AREAS = [
     }
 
     return (
-      matchDate &&
-      matchPlot &&
-      matchForeman &&
-      matchPeriod
-    );
+  matchDate &&
+  matchPlot &&
+  matchForeman &&
+  matchWid &&
+  matchPeriod
+);
   });
 }
 
@@ -632,14 +652,21 @@ function renderForemanSummary(rows) {
     const plot = row.plot || "";
     const people = Number(row.people || 0);
 
-    if (!map[nameKey]) {
-      map[nameKey] = {
-        displayName: rawName,
-        total: 0,
-        plotC: 0,
-        plotD: 0
-      };
-    }
+   if (!map[nameKey]) {
+  map[nameKey] = {
+    displayName: rawName,
+    idCode: row.idCode || "-",
+    total: 0,
+    plotC: 0,
+    plotD: 0
+  };
+}
+else if (
+  map[nameKey].idCode === "-" &&
+  row.idCode
+) {
+  map[nameKey].idCode = row.idCode;
+}
 
     map[nameKey].total += people;
 
@@ -674,7 +701,18 @@ const foremanList = Object.values(map).sort((a, b) => {
         <td style="${isBothPlot ? 'background:yellow; font-weight:bold;' : ''}">
   ${index + 1}
 </td>
-        <td>${escapeHtml(plotLabel)} ${escapeHtml(item.displayName)}</td>
+        <td>
+${escapeHtml(plotLabel)}
+${escapeHtml(item.displayName)}
+<br>
+<span style="
+font-size:12px;
+color:#0066cc;
+font-weight:bold;
+">
+${escapeHtml(item.idCode)}
+</span>
+</td>
         <td><b>${item.total}</b></td>
         <td>${item.plotC}</td>
         <td>${item.plotD}</td>
@@ -752,19 +790,17 @@ function renderMasterKey(rows) {
   });
 
   MASTER_AREAS.forEach(area => {
-    const cItem = latestMap[`${area}__PLOT-C`];
-    const dItem = latestMap[`${area}__PLOT-D`];
+  const cItem = latestMap[`${area}__PLOT-C`];
 
-    const row = `
-      <tr>
-        <td><b>${escapeHtml(area)}</b></td>
-        ${renderKeyCell(cItem)}
-        ${renderKeyCell(dItem)}
-      </tr>
-    `;
+  const row = `
+    <tr>
+      <td><b>${escapeHtml(area)}</b></td>
+      ${renderKeyCell(cItem)}
+    </tr>
+  `;
 
-    masterKeyBody.innerHTML += row;
-  });
+  masterKeyBody.innerHTML += row;
+});
 }
 
 function renderKeyCell(item) {
@@ -833,7 +869,7 @@ window.markReturned = async function(docId) {
       if (rows.length === 0) {
         tableBody.innerHTML = `
           <tr>
-            <td colspan="10">조건에 맞는 데이터가 없습니다.</td>
+            <td colspan="12">조건에 맞는 데이터가 없습니다.</td>
           </tr>
         `;
 
@@ -855,12 +891,28 @@ window.markReturned = async function(docId) {
             <td>${escapeHtml(d.dateText || "")}</td>
             <td>${escapeHtml(d.timeText || "")}</td>
             <td>${escapeHtml(d.foremanName || "")}</td>
-            <td>${escapeHtml(d.plot || "")}</td>
+<td>${escapeHtml(d.idCode || "")}</td>
+            <td style="
+font-weight:bold;
+color:${d.plot === "PLOT-C" ? "#0066cc" : "#e67e22"};
+">
+${escapeHtml(d.plot || "")}
+</td>
             <td>${escapeHtml(d.area || "")}</td>
             <td>${escapeHtml(d.workType || "")}</td>
             <td>${escapeHtml(d.location || "")}</td>
-            <td>${people}</td>
-            <td>${escapeHtml(d.description || "")}</td>
+           <td>${people}</td>
+
+<td style="
+max-width:250px;
+word-break:break-all;
+">
+${Array.isArray(d.wids)
+? escapeHtml(d.wids.join(", "))
+: ""}
+</td>
+
+<td>${escapeHtml(d.description || "")}</td>
             <td>
               <button onclick="deleteRow('${d.id}')">삭제</button>
             </td>
@@ -931,6 +983,7 @@ onSnapshot(masterKeyQuery, (snapshot) => {
     dateFilter.addEventListener("change", renderAll);
     plotFilter.addEventListener("change", renderAll);
     foremanFilter.addEventListener("change", renderAll);
+widFilter.addEventListener("input", renderAll);
 startDate.addEventListener("change", renderAll);
 
 endDate.addEventListener("change", renderAll);
@@ -939,6 +992,7 @@ endDate.addEventListener("change", renderAll);
   dateFilter.value = "ALL";
   plotFilter.value = "ALL";
   foremanFilter.value = "ALL";
+widFilter.value = "";
 
   startDate.value = "";
   endDate.value = "";
