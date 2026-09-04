@@ -232,7 +232,9 @@ import {
   doc,
   deleteDoc,
   setDoc,
-  updateDoc
+  updateDoc,
+  where,
+  Timestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 
@@ -305,8 +307,76 @@ document.getElementById("widFilter");
    const startDate = document.getElementById("startDate");
 
 const endDate = document.getElementById("endDate");
-    const q = query(collection(db, "workData"), orderBy("createdAt", "desc"));
 
+// 오늘 날짜
+const today = new Date();
+today.setHours(23, 59, 59, 999);
+
+// 7일 전 날짜
+const weekAgo = new Date();
+weekAgo.setDate(weekAgo.getDate() - 6);
+weekAgo.setHours(0, 0, 0, 0);
+
+// 날짜 입력칸용 YYYY-MM-DD 생성
+function formatInputDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+// 처음 접속하면 최근 7일 표시
+startDate.value = formatInputDate(weekAgo);
+endDate.value = formatInputDate(today);
+
+let unsubscribeWorkData = null;
+
+function loadWorkData(start, end) {
+
+  // 기존 실시간 조회 중지
+  if (unsubscribeWorkData) {
+    unsubscribeWorkData();
+  }
+
+  const startTime = new Date(start);
+  startTime.setHours(0, 0, 0, 0);
+
+  const endTime = new Date(end);
+  endTime.setHours(23, 59, 59, 999);
+
+  const workDataQuery = query(
+    collection(db, "workData"),
+    where("createdAt", ">=", Timestamp.fromDate(startTime)),
+    where("createdAt", "<=", Timestamp.fromDate(endTime)),
+    orderBy("createdAt", "desc")
+  );
+
+  unsubscribeWorkData = onSnapshot(
+    workDataQuery,
+
+    (snapshot) => {
+
+      console.log("불러온 workData:", snapshot.size);
+
+      allRows = snapshot.docs.map(docSnap => ({
+        id: docSnap.id,
+        ...docSnap.data()
+      }));
+
+      const sortedRows = sortRows(allRows);
+
+      fillDateOptions(sortedRows);
+      fillForemanOptions(sortedRows);
+      renderAll();
+    },
+
+    (error) => {
+      console.error("workData 조회 실패:", error);
+      alert("데이터 조회 실패: " + error.message);
+    }
+  );
+}
     let allRows = [];
 
     const WORK_TYPES = [
@@ -953,19 +1023,6 @@ ${Array.isArray(d.wids)
       }
     };
 
-    // 실시간 데이터 수신
-    onSnapshot(q, (snapshot) => {
-      allRows = snapshot.docs.map(docSnap => ({
-        id: docSnap.id,
-        ...docSnap.data()
-      }));
-
-
-      const sortedRows = sortRows(allRows);
-      fillDateOptions(sortedRows);
-      fillForemanOptions(sortedRows);
-      renderAll();
-    });
 
 const masterKeyQuery = query(collection(db, "masterKey"), orderBy("createdAt", "desc"));
 
@@ -978,15 +1035,34 @@ onSnapshot(masterKeyQuery, (snapshot) => {
   renderMasterKey(keyRows);
 });
 
-
+// 처음 접속하면 최근 7일 데이터 조회
+loadWorkData(startDate.value, endDate.value);
     // 필터 이벤트
     dateFilter.addEventListener("change", renderAll);
     plotFilter.addEventListener("change", renderAll);
     foremanFilter.addEventListener("change", renderAll);
 widFilter.addEventListener("input", renderAll);
-startDate.addEventListener("change", renderAll);
+function reloadSelectedPeriod() {
 
-endDate.addEventListener("change", renderAll);
+  if (!startDate.value || !endDate.value) {
+    return;
+  }
+
+  if (startDate.value > endDate.value) {
+    alert("시작일은 종료일보다 늦을 수 없습니다.");
+    return;
+  }
+
+  dateFilter.value = "ALL";
+
+  loadWorkData(
+    startDate.value,
+    endDate.value
+  );
+}
+
+startDate.addEventListener("change", reloadSelectedPeriod);
+endDate.addEventListener("change", reloadSelectedPeriod);
 
     resetFilterBtn.addEventListener("click", () => {
   dateFilter.value = "ALL";
@@ -994,10 +1070,13 @@ endDate.addEventListener("change", renderAll);
   foremanFilter.value = "ALL";
 widFilter.value = "";
 
-  startDate.value = "";
-  endDate.value = "";
+startDate.value = formatInputDate(weekAgo);
+endDate.value = formatInputDate(today);
 
-  renderAll();
+loadWorkData(
+  startDate.value,
+  endDate.value
+);
 });
   </script>
 </body>
