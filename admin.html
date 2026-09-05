@@ -177,10 +177,8 @@ margin-bottom:5px;
         <th>시간</th>
         <th>포맨</th>
 <th>ID Code</th>
-        <th>플롯</th>
-        <th>작업영역</th>
-        <th>작업유형</th>
-        <th>작업 위치</th>
+       <th>위치</th>
+<th>작업유형</th>
         <th>인원수</th>
 <th>W-ID</th>
         <th>작업내용</th>
@@ -1005,16 +1003,38 @@ window.markReturned = async function(docId) {
             <td>${escapeHtml(d.dateText || "")}</td>
             <td>${escapeHtml(d.timeText || "")}</td>
             <td>${escapeHtml(d.foremanName || "")}</td>
-<td>${escapeHtml(d.idCode || "")}</td>
-            <td style="
+<td style="
+width:80px;
+min-width:80px;
+text-align:center;
 font-weight:bold;
-color:${d.plot === "PLOT-C" ? "#0066cc" : "#e67e22"};
+white-space:nowrap;
 ">
-${escapeHtml(d.plot || "")}
+${escapeHtml(d.idCode || "")}
 </td>
-            <td>${escapeHtml(d.area || "")}</td>
-            <td>${escapeHtml(normalizeWorkType(d.workType || ""))}</td>
-            <td>${escapeHtml(d.location || "")}</td>
+            <td
+title="
+${escapeHtml(d.plot || "")}
+/ ${escapeHtml(d.area || "")}
+/ ${escapeHtml(d.location || "")}
+"
+style="
+width:180px;
+max-width:180px;
+overflow:hidden;
+text-overflow:ellipsis;
+white-space:nowrap;
+font-weight:bold;
+"
+>
+
+${d.plot === "PLOT-C" ? "C" : "D"}
+ /
+${escapeHtml(d.area || "")}
+ /
+${escapeHtml(d.location || "")}
+
+</td>
            <td>${people}</td>
 
 <td style="
@@ -1026,7 +1046,15 @@ ${Array.isArray(d.wids)
 : ""}
 </td>
 
-<td>${escapeHtml(d.description || "")}</td>
+<td style="
+max-width:350px;
+overflow:hidden;
+text-overflow:ellipsis;
+white-space:nowrap;
+"
+title="${escapeHtml(d.description || "")}">
+${escapeHtml(d.description || "")}
+</td>
             <td>
               <button onclick="deleteRow('${d.id}')">삭제</button>
             </td>
