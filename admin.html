@@ -54,7 +54,18 @@
   </div>
 
   <!-- ✅ 날짜별 집계표 -->
-  <h3>날짜별 인원 집계 (보고용)</h3>
+ <h3>날짜별 작업 인원 및 포맨 집계 (보고용)</h3>
+
+<div style="
+font-size:12px;
+color:gray;
+margin-bottom:5px;
+">
+  ※ 표시 형식:
+  <b style="color:#222;">워커 수</b>
+  /
+  <b style="color:#0066cc;">포맨 수</b>
+</div>
   <table border="1" cellpadding="8" style="margin-bottom:30px;">
     <thead>
       <tr>
@@ -77,29 +88,6 @@
     <tbody id="summaryBody"></tbody>
   </table>
 
-
-<h3>포맨 카테고리별 집계 (보고용)</h3>
-
-<table border="1" cellpadding="8" style="margin-bottom:30px;">
-  <thead>
-    <tr>
-      <th>날짜</th>
-      <th>총 포맨</th>
-     <th>ELV1(FA,ACS)</th>
-<th>Honeywell &amp; MOI CCTV</th>
-<th>Tag Verification &amp; Replacement</th>
-<th>Snagging Comments</th>
-<th>LV T&amp;C, Physical Work</th>
-<th>scaffolder</th>
-<th>ABD</th>
-<th>LCS &amp; Lux &amp; Lighting Modification</th>
-<th>TEMP</th>
-<th>Energize</th>
-    </tr>
-  </thead>
-
-  <tbody id="foremanWorkTypeBody"></tbody>
-</table>
 
 
 <!-- ✅ 포맨별 총 인원 집계 + 우측 4x4 요약 -->
@@ -269,10 +257,6 @@ window.saveNotice = async function () {
     const tableBody = document.getElementById("tableBody");
     const summaryBody = document.getElementById("summaryBody");
     const foremanSummaryBody = document.getElementById("foremanSummaryBody");
-
-
-const foremanWorkTypeBody =
-  document.getElementById("foremanWorkTypeBody");
 
 
 const masterKeyBody = document.getElementById("masterKeyBody");
@@ -550,181 +534,226 @@ const matchWid =
 }
 
     // 날짜별 집계표
-    function renderSummary(rows) {
-      summaryBody.innerHTML = "";
+  // 날짜별 워커 수 / 포맨 수 통합 집계표
+function renderSummary(rows) {
 
-      const summaryMap = {};
-
-      rows.forEach(row => {
-        const date = row.dateText || "날짜없음";
-        const people = Number(row.people || 0);
-        const workType =
-  normalizeWorkType(row.workType || "");
-
-        if (!summaryMap[date]) {
-          summaryMap[date] = {
-            total: 0,
-            plotC: 0,
-            plotD: 0,
-            workTypePeople: {}
-          };
-
-          WORK_TYPES.forEach(type => {
-            summaryMap[date].workTypePeople[type] = 0;
-          });
-        }
-
-        summaryMap[date].total += people;
-
-        if (row.plot === "PLOT-C") summaryMap[date].plotC += people;
-        if (row.plot === "PLOT-D") summaryMap[date].plotD += people;
-
-        if (summaryMap[date].workTypePeople.hasOwnProperty(workType)) {
-          summaryMap[date].workTypePeople[workType] += people;
-        }
-      });
-    
-     let dates = Object.keys(summaryMap)
-  .sort((a,b) => parseDate(b) - parseDate(a));
-
-if (!startDate.value && !endDate.value) {
-  dates = dates.slice(0, 7);
-}
-
-      if (dates.length === 0) {
-        summaryBody.innerHTML = `
-          <tr>
-            <td colspan="14">데이터가 없습니다.</td>
-          </tr>
-        `;
-        return;
-      }
-
-      dates.forEach(date => {
-        const s = summaryMap[date];
-
-        const row = `
-          <tr>
-            <td>${escapeHtml(date)}</td>
-            <td><b>${s.total}</b></td>
-            <td>${s.plotC}</td>
-            <td>${s.plotD}</td>
-          <td>${s.workTypePeople["ELV1(FA,ACS)"]}</td>
-<td>${s.workTypePeople["Honeywell & MOI CCTV"]}</td>
-<td>${s.workTypePeople["Tag Verification & Replacement"]}</td>
-<td>${s.workTypePeople["Snagging Comments"]}</td>
-<td>${s.workTypePeople["LV T&C, Physical Work"]}</td>
-<td>${s.workTypePeople["scaffolder"]}</td>
-<td>${s.workTypePeople["ABD"]}</td>
-<td>${s.workTypePeople["LCS & Lux & Lighting Modification"]}</td>
-<td>${s.workTypePeople["TEMP"]}</td>
-<td>${s.workTypePeople["Energize"]}</td>
-          </tr>
-        `;
-
-        summaryBody.innerHTML += row;
-      });
-    }
-
-function renderForemanWorkTypeSummary(rows) {
-
-  foremanWorkTypeBody.innerHTML = "";
+  summaryBody.innerHTML = "";
 
   const summaryMap = {};
 
   rows.forEach(row => {
 
     const date = row.dateText || "날짜없음";
-    const foreman = (row.foremanName || "").trim();
-const workType =
-  normalizeWorkType(row.workType || "");
     const people = Number(row.people || 0);
+    const plot = row.plot || "";
+    const foreman = (row.foremanName || "").trim();
+    const foremanKey = foreman.toLowerCase();
 
-    if (!foreman) return;
+    const workType =
+      normalizeWorkType(row.workType || "");
 
     if (!summaryMap[date]) {
-      summaryMap[date] = {};
+
+      summaryMap[date] = {
+        total: 0,
+        plotC: 0,
+        plotD: 0,
+        workTypePeople: {},
+        foremanWorkData: {}
+      };
+
+      WORK_TYPES.forEach(type => {
+        summaryMap[date].workTypePeople[type] = 0;
+      });
     }
 
-    if (!summaryMap[date][foreman]) {
-      summaryMap[date][foreman] = {};
+    const summary = summaryMap[date];
+
+    // 전체 워커 인원 집계
+    summary.total += people;
+
+    if (plot === "PLOT-C") {
+      summary.plotC += people;
     }
 
-    if (!summaryMap[date][foreman][workType]) {
-      summaryMap[date][foreman][workType] = 0;
+    if (plot === "PLOT-D") {
+      summary.plotD += people;
     }
 
-    summaryMap[date][foreman][workType] += people;
+    // Work Type별 워커 인원 집계
+    if (
+      Object.prototype.hasOwnProperty.call(
+        summary.workTypePeople,
+        workType
+      )
+    ) {
+      summary.workTypePeople[workType] += people;
+    }
+
+    // 포맨별 Work Type 인원 집계
+    if (foremanKey) {
+
+      if (!summary.foremanWorkData[foremanKey]) {
+        summary.foremanWorkData[foremanKey] = {};
+      }
+
+      if (!summary.foremanWorkData[foremanKey][workType]) {
+        summary.foremanWorkData[foremanKey][workType] = 0;
+      }
+
+      summary.foremanWorkData[foremanKey][workType] += people;
+    }
   });
 
-  let dates = Object.keys(summaryMap)
-  .sort((a,b) => parseDate(b) - parseDate(a));
 
-if (!startDate.value && !endDate.value) {
-  dates = dates.slice(0, 7);
-}
+  let dates = Object.keys(summaryMap)
+    .sort((a, b) => parseDate(b) - parseDate(a));
+
+  if (!startDate.value && !endDate.value) {
+    dates = dates.slice(0, 7);
+  }
+
 
   if (dates.length === 0) {
-    foremanWorkTypeBody.innerHTML = `
+
+    summaryBody.innerHTML = `
       <tr>
-        <td colspan="12">데이터가 없습니다.</td>
+        <td colspan="14">
+          데이터가 없습니다.
+        </td>
       </tr>
     `;
+
     return;
   }
 
+
+  const makeCombinedCell = (summary, type) => {
+
+    const workerCount =
+      summary.workTypePeople[type] || 0;
+
+    const foremanCount =
+      summary.workTypeForeman[type] || 0;
+
+    return `
+      <td style="text-align:center; white-space:nowrap;">
+        <b>${workerCount}</b>
+        <span style="color:#999; margin:0 4px;">/</span>
+        <span style="color:#0066cc; font-weight:bold;">
+          ${foremanCount}
+        </span>
+      </td>
+    `;
+  };
+
+
   dates.forEach(date => {
 
-    const typeCount = {};
+    const summary = summaryMap[date];
+
+    // Work Type별 포맨 수 초기화
+    summary.workTypeForeman = {};
 
     WORK_TYPES.forEach(type => {
-      typeCount[type] = 0;
+      summary.workTypeForeman[type] = 0;
     });
 
-    const foremen = Object.keys(summaryMap[date]);
+    /*
+      포맨이 같은 날 여러 Work Type을 입력했다면
+      가장 많은 인원이 배정된 Work Type 하나에만
+      포맨 1명으로 집계
+    */
+    Object.values(summary.foremanWorkData)
+      .forEach(workData => {
 
-    foremen.forEach(foreman => {
+        let mainWorkType = "";
+        let highestPeople = -1;
 
-      const workData = summaryMap[date][foreman];
+        Object.entries(workData)
+          .forEach(([type, assignedPeople]) => {
 
-      let maxType = "";
-      let maxPeople = -1;
+            if (assignedPeople > highestPeople) {
+              highestPeople = assignedPeople;
+              mainWorkType = type;
+            }
+          });
 
-      Object.entries(workData).forEach(([type, people]) => {
-
-        if (people > maxPeople) {
-          maxPeople = people;
-          maxType = type;
+        if (
+          mainWorkType &&
+          Object.prototype.hasOwnProperty.call(
+            summary.workTypeForeman,
+            mainWorkType
+          )
+        ) {
+          summary.workTypeForeman[mainWorkType]++;
         }
-
       });
 
-      if (maxType) {
-        typeCount[maxType]++;
-      }
 
-    });
-
-    foremanWorkTypeBody.innerHTML += `
+    const row = `
       <tr>
-        <td>${date}</td>
-        <td><b>${foremen.length}</b></td>
+        <td>${escapeHtml(date)}</td>
 
-        <td>${typeCount["ELV1(FA,ACS)"]}</td>
-<td>${typeCount["Honeywell & MOI CCTV"]}</td>
-<td>${typeCount["Tag Verification & Replacement"]}</td>
-<td>${typeCount["Snagging Comments"]}</td>
-<td>${typeCount["LV T&C, Physical Work"]}</td>
-<td>${typeCount["scaffolder"]}</td>
-<td>${typeCount["ABD"]}</td>
-<td>${typeCount["LCS & Lux & Lighting Modification"]}</td>
-<td>${typeCount["TEMP"]}</td>
-<td>${typeCount["Energize"]}</td>
+        <td>
+          <b>${summary.total}</b>
+        </td>
+
+        <td>${summary.plotC}</td>
+        <td>${summary.plotD}</td>
+
+        ${makeCombinedCell(summary, "ELV1(FA,ACS)")}
+
+        ${makeCombinedCell(
+          summary,
+          "Honeywell & MOI CCTV"
+        )}
+
+        ${makeCombinedCell(
+          summary,
+          "Tag Verification & Replacement"
+        )}
+
+        ${makeCombinedCell(
+          summary,
+          "Snagging Comments"
+        )}
+
+        ${makeCombinedCell(
+          summary,
+          "LV T&C, Physical Work"
+        )}
+
+        ${makeCombinedCell(
+          summary,
+          "scaffolder"
+        )}
+
+        ${makeCombinedCell(
+          summary,
+          "ABD"
+        )}
+
+        ${makeCombinedCell(
+          summary,
+          "LCS & Lux & Lighting Modification"
+        )}
+
+        ${makeCombinedCell(
+          summary,
+          "TEMP"
+        )}
+
+        ${makeCombinedCell(
+          summary,
+          "Energize"
+        )}
       </tr>
     `;
+
+    summaryBody.innerHTML += row;
   });
 }
-
 
 function renderForemanSummary(rows) {
   foremanSummaryBody.innerHTML = "";
@@ -1017,7 +1046,6 @@ ${Array.isArray(d.wids)
 
   renderSummary(filteredRows);
 
-  renderForemanWorkTypeSummary(filteredRows);
 
   renderForemanSummary(filteredRows);
 
