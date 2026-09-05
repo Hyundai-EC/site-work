@@ -62,16 +62,16 @@
         <th>총 인원</th>
         <th>PLOT-C</th>
         <th>PLOT-D</th>
-        <th>ELV1(FA,ACS)</th>
-        <th>ELV(Honeywell)</th>
-        <th>Defect</th>
-        <th>Snag</th>
-        <th>LV</th>
-        <th>scaffolder</th>
-        <th>ABD</th>
-        <th>LCS</th>
-        <th>TEMP</th>
-        <th>Energize</th>
+       <th>ELV1(FA,ACS)</th>
+<th>Honeywell &amp; MOI CCTV</th>
+<th>Tag Verification &amp; Replacement</th>
+<th>Snagging Comments</th>
+<th>LV T&amp;C, Physical Work</th>
+<th>scaffolder</th>
+<th>ABD</th>
+<th>LCS &amp; Lux &amp; Lighting Modification</th>
+<th>TEMP</th>
+<th>Energize</th>
       </tr>
     </thead>
     <tbody id="summaryBody"></tbody>
@@ -85,16 +85,16 @@
     <tr>
       <th>날짜</th>
       <th>총 포맨</th>
-      <th>ELV1(FA,ACS)</th>
-      <th>ELV(Honeywell)</th>
-      <th>Defect</th>
-      <th>Snag</th>
-      <th>LV</th>
-      <th>scaffolder</th>
-      <th>ABD</th>
-      <th>LCS</th>
-      <th>TEMP</th>
-      <th>Energize</th>
+     <th>ELV1(FA,ACS)</th>
+<th>Honeywell &amp; MOI CCTV</th>
+<th>Tag Verification &amp; Replacement</th>
+<th>Snagging Comments</th>
+<th>LV T&amp;C, Physical Work</th>
+<th>scaffolder</th>
+<th>ABD</th>
+<th>LCS &amp; Lux &amp; Lighting Modification</th>
+<th>TEMP</th>
+<th>Energize</th>
     </tr>
   </thead>
 
@@ -379,18 +379,31 @@ function loadWorkData(start, end) {
 }
     let allRows = [];
 
-    const WORK_TYPES = [
-      "ELV1(FA,ACS)",
-      "ELV(Honeywell)",
-      "Defect",
-      "Snag",
-      "LV",
-      "scaffolder",
-      "ABD",
-      "LCS",
-      "TEMP",
-      "Energize"
-    ];
+const WORK_TYPES = [
+  "ELV1(FA,ACS)",
+  "Honeywell & MOI CCTV",
+  "Tag Verification & Replacement",
+  "Snagging Comments",
+  "LV T&C, Physical Work",
+  "scaffolder",
+  "ABD",
+  "LCS & Lux & Lighting Modification",
+  "TEMP",
+  "Energize"
+];
+
+function normalizeWorkType(type) {
+
+  const workTypeMap = {
+    "ELV(Honeywell)": "Honeywell & MOI CCTV",
+    "Defect": "Tag Verification & Replacement",
+    "Snag": "Snagging Comments",
+    "LV": "LV T&C, Physical Work",
+    "LCS": "LCS & Lux & Lighting Modification"
+  };
+
+  return workTypeMap[type] || type;
+}
 
 const MASTER_AREAS = [
   "T-Room",
@@ -545,7 +558,8 @@ const matchWid =
       rows.forEach(row => {
         const date = row.dateText || "날짜없음";
         const people = Number(row.people || 0);
-        const workType = row.workType || "";
+        const workType =
+  normalizeWorkType(row.workType || "");
 
         if (!summaryMap[date]) {
           summaryMap[date] = {
@@ -595,16 +609,16 @@ if (!startDate.value && !endDate.value) {
             <td><b>${s.total}</b></td>
             <td>${s.plotC}</td>
             <td>${s.plotD}</td>
-            <td>${s.workTypePeople["ELV1(FA,ACS)"]}</td>
-            <td>${s.workTypePeople["ELV(Honeywell)"]}</td>
-            <td>${s.workTypePeople["Defect"]}</td>
-            <td>${s.workTypePeople["Snag"]}</td>
-            <td>${s.workTypePeople["LV"]}</td>
-            <td>${s.workTypePeople["scaffolder"]}</td>
-            <td>${s.workTypePeople["ABD"]}</td>
-            <td>${s.workTypePeople["LCS"]}</td>
-            <td>${s.workTypePeople["TEMP"]}</td>
-            <td>${s.workTypePeople["Energize"]}</td>
+          <td>${s.workTypePeople["ELV1(FA,ACS)"]}</td>
+<td>${s.workTypePeople["Honeywell & MOI CCTV"]}</td>
+<td>${s.workTypePeople["Tag Verification & Replacement"]}</td>
+<td>${s.workTypePeople["Snagging Comments"]}</td>
+<td>${s.workTypePeople["LV T&C, Physical Work"]}</td>
+<td>${s.workTypePeople["scaffolder"]}</td>
+<td>${s.workTypePeople["ABD"]}</td>
+<td>${s.workTypePeople["LCS & Lux & Lighting Modification"]}</td>
+<td>${s.workTypePeople["TEMP"]}</td>
+<td>${s.workTypePeople["Energize"]}</td>
           </tr>
         `;
 
@@ -622,7 +636,8 @@ function renderForemanWorkTypeSummary(rows) {
 
     const date = row.dateText || "날짜없음";
     const foreman = (row.foremanName || "").trim();
-    const workType = row.workType || "";
+const workType =
+  normalizeWorkType(row.workType || "");
     const people = Number(row.people || 0);
 
     if (!foreman) return;
@@ -696,15 +711,15 @@ if (!startDate.value && !endDate.value) {
         <td><b>${foremen.length}</b></td>
 
         <td>${typeCount["ELV1(FA,ACS)"]}</td>
-        <td>${typeCount["ELV(Honeywell)"]}</td>
-        <td>${typeCount["Defect"]}</td>
-        <td>${typeCount["Snag"]}</td>
-        <td>${typeCount["LV"]}</td>
-        <td>${typeCount["scaffolder"]}</td>
-        <td>${typeCount["ABD"]}</td>
-        <td>${typeCount["LCS"]}</td>
-        <td>${typeCount["TEMP"]}</td>
-        <td>${typeCount["Energize"]}</td>
+<td>${typeCount["Honeywell & MOI CCTV"]}</td>
+<td>${typeCount["Tag Verification & Replacement"]}</td>
+<td>${typeCount["Snagging Comments"]}</td>
+<td>${typeCount["LV T&C, Physical Work"]}</td>
+<td>${typeCount["scaffolder"]}</td>
+<td>${typeCount["ABD"]}</td>
+<td>${typeCount["LCS & Lux & Lighting Modification"]}</td>
+<td>${typeCount["TEMP"]}</td>
+<td>${typeCount["Energize"]}</td>
       </tr>
     `;
   });
@@ -969,7 +984,7 @@ color:${d.plot === "PLOT-C" ? "#0066cc" : "#e67e22"};
 ${escapeHtml(d.plot || "")}
 </td>
             <td>${escapeHtml(d.area || "")}</td>
-            <td>${escapeHtml(d.workType || "")}</td>
+            <td>${escapeHtml(normalizeWorkType(d.workType || ""))}</td>
             <td>${escapeHtml(d.location || "")}</td>
            <td>${people}</td>
 
