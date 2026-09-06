@@ -66,21 +66,29 @@ margin-bottom:5px;
   /
   <b style="color:#0066cc;">포맨 수</b>
 </div>
-  <table border="1" cellpadding="8" style="margin-bottom:30px;">
+  <table
+border="1"
+cellpadding="3"
+style="
+margin-bottom:30px;
+font-size:13px;
+">
     <thead>
       <tr>
         <th>날짜</th>
-        <th>총 인원</th>
+        <th>총인원/포맨</th>
         <th>PLOT-C</th>
         <th>PLOT-D</th>
        <th>ELV1(FA,ACS)</th>
 <th>Honeywell &amp; MOI CCTV</th>
-<th>Tag Verification &amp; Replacement</th>
+<th>Defect</th>
+<th>Tag </th>
 <th>Snagging Comments</th>
-<th>LV T&amp;C, Physical Work</th>
+<th>LV T&C, Physical Work</th>
+<th>Night Shift</th>
 <th>scaffolder</th>
 <th>ABD</th>
-<th>LCS &amp; Lux &amp; Lighting Modification</th>
+<th>LCS </th>
 <th>TEMP</th>
 <th>Energize</th>
       </tr>
@@ -95,7 +103,8 @@ margin-bottom:5px;
 
   <div>
     <h3>포맨별 총 인원 집계</h3>
-    <table border="1" cellpadding="8">
+  <table border="1" cellpadding="4"
+style="font-size:14px;">
       <thead>
         <tr>
           <th>No</th>
@@ -187,23 +196,25 @@ margin-bottom:5px;
     </thead>
     <tbody id="tableBody"></tbody>
 
-    <tfoot>
-      <tr>
-        <td colspan="8"><b>총 인원</b></td>
-        <td id="totalPeople"><b>0</b></td>
-        <td colspan="3"></td>
-      </tr>
-      <tr>
-        <td colspan="8"><b>PLOT-C 인원</b></td>
-        <td id="plotC"><b>0</b></td>
-        <td colspan="3"></td>
-      </tr>
-      <tr>
-        <td colspan="8"><b>PLOT-D 인원</b></td>
-        <td id="plotD"><b>0</b></td>
-        <td colspan="3"></td>
-      </tr>
-    </tfoot>
+  <tfoot>
+  <tr>
+    <td colspan="6"><b>총 인원</b></td>
+    <td id="totalPeople"><b>0</b></td>
+    <td colspan="3"></td>
+  </tr>
+
+  <tr>
+    <td colspan="6"><b>PLOT-C 인원</b></td>
+    <td id="plotC"><b>0</b></td>
+    <td colspan="3"></td>
+  </tr>
+
+  <tr>
+    <td colspan="6"><b>PLOT-D 인원</b></td>
+    <td id="plotD"><b>0</b></td>
+    <td colspan="3"></td>
+  </tr>
+</tfoot>
   </table>
 
   <script type="module">
@@ -364,9 +375,11 @@ function loadWorkData(start, end) {
 const WORK_TYPES = [
   "ELV1(FA,ACS)",
   "Honeywell & MOI CCTV",
+  "Defect",
   "Tag Verification & Replacement",
   "Snagging Comments",
   "LV T&C, Physical Work",
+  "Night Shift",
   "scaffolder",
   "ABD",
   "LCS & Lux & Lighting Modification",
@@ -374,11 +387,11 @@ const WORK_TYPES = [
   "Energize"
 ];
 
+
 function normalizeWorkType(type) {
 
   const workTypeMap = {
     "ELV(Honeywell)": "Honeywell & MOI CCTV",
-    "Defect": "Tag Verification & Replacement",
     "Snag": "Snagging Comments",
     "LV": "LV T&C, Physical Work",
     "LCS": "LCS & Lux & Lighting Modification"
@@ -541,32 +554,40 @@ function renderSummary(rows) {
 
   rows.forEach(row => {
 
-    const date = row.dateText || "날짜없음";
-    const people = Number(row.people || 0);
-    const plot = row.plot || "";
-    const foreman = (row.foremanName || "").trim();
-    const foremanKey = foreman.toLowerCase();
+  const date = row.dateText || "날짜없음";
+  const people = Number(row.people || 0);
+  const plot = row.plot || "";
 
-    const workType =
-      normalizeWorkType(row.workType || "");
+  const foreman =
+    (row.foremanName || "").trim();
 
-    if (!summaryMap[date]) {
+  const foremanKey =
+    foreman.toLowerCase();
 
-      summaryMap[date] = {
-        total: 0,
-        plotC: 0,
-        plotD: 0,
-        workTypePeople: {},
-        foremanWorkData: {}
-      };
+  const workType =
+    normalizeWorkType(row.workType || "");
 
-      WORK_TYPES.forEach(type => {
-        summaryMap[date].workTypePeople[type] = 0;
-      });
-    }
+  if (!summaryMap[date]) {
 
-    const summary = summaryMap[date];
+    summaryMap[date] = {
+      total: 0,
+      plotC: 0,
+      plotD: 0,
+      workTypePeople: {},
+      foremanWorkData: {},
+      foremen: new Set()
+    };
 
+    WORK_TYPES.forEach(type => {
+      summaryMap[date].workTypePeople[type] = 0;
+    });
+  }
+
+  const summary = summaryMap[date];
+
+  if (foremanKey) {
+    summary.foremen.add(foremanKey);
+  }
     // 전체 워커 인원 집계
     summary.total += people;
 
@@ -616,7 +637,7 @@ function renderSummary(rows) {
 
     summaryBody.innerHTML = `
       <tr>
-        <td colspan="14">
+        <td colspan="16">
           데이터가 없습니다.
         </td>
       </tr>
@@ -635,7 +656,13 @@ function renderSummary(rows) {
       summary.workTypeForeman[type] || 0;
 
     return `
-      <td style="text-align:center; white-space:nowrap;">
+      <td style="
+text-align:center;
+white-space:nowrap;
+padding:2px 4px;
+">
+
+
         <b>${workerCount}</b>
         <span style="color:#999; margin:0 4px;">/</span>
         <span style="color:#0066cc; font-weight:bold;">
@@ -693,9 +720,25 @@ function renderSummary(rows) {
       <tr>
         <td>${escapeHtml(date)}</td>
 
-        <td>
-          <b>${summary.total}</b>
-        </td>
+       <td style="text-align:center;">
+
+  <b>${summary.total}</b>
+
+  <span style="
+  color:#999;
+  margin:0 4px;
+  ">
+  /
+  </span>
+
+  <span style="
+  color:#0066cc;
+  font-weight:bold;
+  ">
+  ${summary.foremen.size}
+  </span>
+
+</td>
 
         <td>${summary.plotC}</td>
         <td>${summary.plotD}</td>
@@ -703,14 +746,19 @@ function renderSummary(rows) {
         ${makeCombinedCell(summary, "ELV1(FA,ACS)")}
 
         ${makeCombinedCell(
-          summary,
-          "Honeywell & MOI CCTV"
-        )}
+  summary,
+  "Honeywell & MOI CCTV"
+)}
 
-        ${makeCombinedCell(
-          summary,
-          "Tag Verification & Replacement"
-        )}
+${makeCombinedCell(
+  summary,
+  "Defect"
+)}
+
+${makeCombinedCell(
+  summary,
+  "Tag Verification & Replacement"
+)}
 
         ${makeCombinedCell(
           summary,
@@ -721,7 +769,10 @@ function renderSummary(rows) {
           summary,
           "LV T&C, Physical Work"
         )}
-
+       ${makeCombinedCell(
+  summary,
+  "Night Shift"
+)} 
         ${makeCombinedCell(
           summary,
           "scaffolder"
@@ -981,7 +1032,7 @@ window.markReturned = async function(docId) {
       if (rows.length === 0) {
         tableBody.innerHTML = `
           <tr>
-            <td colspan="12">조건에 맞는 데이터가 없습니다.</td>
+            <td colspan="10">조건에 맞는 데이터가 없습니다.</td>
           </tr>
         `;
 
