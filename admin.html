@@ -1012,7 +1012,8 @@ white-space:nowrap;
 ">
 ${escapeHtml(d.idCode || "")}
 </td>
-            <td
+  
+<td
 title="
 ${escapeHtml(d.plot || "")}
 / ${escapeHtml(d.area || "")}
@@ -1035,7 +1036,22 @@ ${escapeHtml(d.area || "")}
 ${escapeHtml(d.location || "")}
 
 </td>
-           <td>${people}</td>
+
+<td style="
+white-space:nowrap;
+">
+${escapeHtml(
+  normalizeWorkType(d.workType || "")
+)}
+</td>
+
+<td>${people}</td>
+
+
+
+
+
+
 
 <td style="
 max-width:250px;
