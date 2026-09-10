@@ -86,6 +86,7 @@ font-size:13px;
 <th>Snagging Comments</th>
 <th>LV T&C, Physical Work</th>
 <th>Night Shift</th>
+<th>Maintenance</th>
 <th>scaffolder</th>
 <th>ABD</th>
 <th>LCS </th>
@@ -380,6 +381,7 @@ const WORK_TYPES = [
   "Snagging Comments",
   "LV T&C, Physical Work",
   "Night Shift",
+  "Maintenance",
   "scaffolder",
   "ABD",
   "LCS & Lux & Lighting Modification",
@@ -637,7 +639,7 @@ function renderSummary(rows) {
 
     summaryBody.innerHTML = `
       <tr>
-        <td colspan="16">
+        <td colspan="17">
           데이터가 없습니다.
         </td>
       </tr>
@@ -769,14 +771,20 @@ ${makeCombinedCell(
           summary,
           "LV T&C, Physical Work"
         )}
-       ${makeCombinedCell(
+     ${makeCombinedCell(
   summary,
   "Night Shift"
-)} 
-        ${makeCombinedCell(
-          summary,
-          "scaffolder"
-        )}
+)}
+
+${makeCombinedCell(
+  summary,
+  "Maintenance"
+)}
+
+${makeCombinedCell(
+  summary,
+  "scaffolder"
+)}
 
         ${makeCombinedCell(
           summary,
