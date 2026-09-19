@@ -166,7 +166,7 @@ textarea:focus{
 
   <h2>👷 Foreman Work Input</h2>
 
- <div class="name-row">
+<div class="name-row">
 
   <div>
     <label>Foreman Name</label>
@@ -176,6 +176,11 @@ textarea:focus{
   <div>
     <label>ID Code</label>
     <input type="text" id="idCode">
+  </div>
+
+  <div>
+    <label>Phone Number</label>
+    <input type="text" id="phoneNumber">
   </div>
 
 </div>
@@ -507,6 +512,9 @@ document.getElementById("foremanName").value =
 document.getElementById("idCode").value =
   localStorage.getItem("idCode") || "";
 
+document.getElementById("phoneNumber").value =
+  localStorage.getItem("phoneNumber") || "";
+
 
    window.sendData = async function () {
 
@@ -516,14 +524,20 @@ document.getElementById("idCode").value =
   btn.textContent = "Submitting...";
 
 
-const foremanName = document.getElementById("foremanName").value.trim();
+const foremanName =
+document.getElementById("foremanName").value.trim();
 
 const idCode =
 document.getElementById("idCode").value.trim();
 
-if (!foremanName || !idCode) {
+const phoneNumber =
+document.getElementById("phoneNumber").value.trim();
 
-  alert("Please enter Foreman Name and ID Code");
+
+
+if (!foremanName || !idCode || !phoneNumber) {
+
+alert("Please enter Foreman Name, ID Code and Phone Number");
 
   btn.disabled = false;
   btn.textContent = "Submit";
@@ -635,7 +649,9 @@ await addDoc(collection(db, "workData"), {
 
   foremanName: document.getElementById("foremanName").value,
 
-idCode: document.getElementById("idCode").value,
+  idCode: document.getElementById("idCode").value,
+
+  phoneNumber: document.getElementById("phoneNumber").value,
 
 plot: selectedPlot.dataset.value,
 
@@ -658,9 +674,17 @@ absent: Number(document.getElementById("absent").value || 0),
 
 });
 localStorage.setItem("foremanName", document.getElementById("foremanName").value);
+
+
+
 localStorage.setItem(
   "idCode",
   document.getElementById("idCode").value
+);
+
+localStorage.setItem(
+  "phoneNumber",
+  document.getElementById("phoneNumber").value
 );
 
     alert("Submitted successfully");
